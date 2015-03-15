@@ -4,6 +4,7 @@
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
 
+#include "game_object.h"
 #include "game_state.h"
 
 char * text = "I said goodbye to everyone and embarked on the journey.\n"\
@@ -84,27 +85,28 @@ void render_game(game_renderer renderer, game_state * state){
   SDL_SetRenderTarget(renderer.renderer,renderer.left_target);
   SDL_SetRenderDrawColor(renderer.renderer, 255, 255, 255, 255);
   SDL_RenderClear(renderer.renderer);
-
-  dst = (SDL_Rect){300,200,100,100};
-  SDL_QueryTexture(renderer.guy, NULL, NULL, &dst.w, &dst.h);
-  SDL_RenderCopy(renderer.renderer, renderer.guy,NULL,&dst);
-
-  dst.x = 150; 
-  SDL_QueryTexture(renderer.campfire, NULL, NULL, &dst.w, &dst.h);
-  SDL_RenderCopy(renderer.renderer, renderer.campfire,NULL,&dst);
-
-  SDL_QueryTexture(renderer.grass, NULL, NULL, &dst.w, &dst.h);
-
-  dst.x = 180;
-  dst.y = 350;
-  SDL_RenderCopy(renderer.renderer, renderer.grass,NULL,&dst);
-  dst.x = 171;
-  dst.y += 3;
-  SDL_RenderCopy(renderer.renderer, renderer.grass,NULL,&dst);
-  dst.x = 121;
-  dst.y += 10;
-
-  SDL_RenderCopy(renderer.renderer, renderer.grass,NULL,&dst);
+  for(int i = 0 ; i < state->item_count; i++){
+    game_obj gobj = state->items[i];
+    dst = (SDL_Rect){0, 0, 100,100};
+    SDL_Texture * _tex;
+    //printf("gobj.header %i\n",gobj.header);
+    switch(gobj.header){
+    case PLAYER:
+      _tex = renderer.guy;
+      dst.x = gobj.player.x;
+      dst.y = gobj.player.y;
+      break;
+    case GRASS:
+      _tex = renderer.grass;
+      dst.x = gobj.grass_leaf.x;
+      dst.y = gobj.grass_leaf.y;
+      break;
+    }
+    
+    
+    SDL_QueryTexture(_tex, NULL, NULL, &dst.w, &dst.h);
+    SDL_RenderCopy(renderer.renderer, _tex,NULL,&dst);
+  }
   // render graphics done
 
   SDL_SetRenderTarget(renderer.renderer,NULL);
@@ -143,14 +145,15 @@ void render_game(game_renderer renderer, game_state * state){
   }
 }
 
-typedef struct{
-  int deltax;
-  int deltay;
-}move_state;
-
 int main(){
+  player pl1 = {PLAYER, 0, 0};
+  grass_leaf leaf = {GRASS, 100, 100};
+  
   game_state state;
   state.is_running = true;
+  state.items[0].player = pl1;
+  state.items[1].grass_leaf = leaf;
+  state.item_count = 2;
   game_renderer renderer = load_game_renderer();
   while(state.is_running){
     render_game(renderer,&state);      
