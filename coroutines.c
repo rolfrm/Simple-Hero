@@ -229,7 +229,7 @@ ccdispatch * ccstart(){
 
   memset(dis,0,sizeof(ccdispatch));
   sem_init(&dis->sem,0, -1);
-  int stacksize = 0x4000;
+  int stacksize = 0x1000;
   void * stack = malloc(stacksize);
   memset(stack,0,stacksize);
   pthread_attr_init(&dis->attr);
