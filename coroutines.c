@@ -103,8 +103,7 @@ void costack_delete( costack * stk)
   free(stk->stack);
 }
 
-// test //
-
+// CC //
 #define CC_INITIALIZED 0
 #define CC_YEILDED 1
 #define CC_PRE_YEILD 2
@@ -243,23 +242,93 @@ void ccend(){
   costack * stk = *ccstack();  
 }
 
-void test(void * data){
-  printf("data!\n");
-  for(int i = 0; i < 6;i++){
-    printf("v.. %i %i\n",i, data);
+
+// test //
+int tclock = 0;
+int time_of_day(){
+  return tclock % 24;
+}
+
+int day(){
+  return (tclock / 24) * 24;
+}
+
+int next_day(){
+  return day() + 24;
+}
+
+bool is_day(){
+  return time_of_day() > 8 && time_of_day() < 18;
+}
+
+void wait_until(int day_time){
+  int target;
+  if(time_of_day() > day_time){
+    target = day() + 24 + day_time;
+  }else{
+    target = day() + day_time;
+  }
+  while(tclock < target){
     yield();
-  } 
-  printf("done.\n");
+  }
+}
+
+bool wait_until2(int day_time){
+  int target;
+  if(time_of_day() > day_time){
+    target = day() + 24 + day_time;
+  }else{
+    target = day() + day_time;
+  }
+  yield();
+  return tclock < target;
+}
+
+void test(void * data){
+  char * name = (char *) data;
+  void status(char * status){
+    printf("%s: %s..\n",name,status);
+  }
+  while(true){
+    int end_of_day = day() + 17;
+      while(tclock < end_of_day) {
+      status("Chopping wood");
+      yield();
+      if(!(rand() % 20)){
+	status("Spider! :( ");
+	int t = tclock + rand() % 10;
+	while(tclock < t){
+	  yield();
+	  status("Running around.. :( ");
+	}
+	status("getting back to work..\n");
+      }
+    }
+    status("Time to go home..");
+    while(wait_until2(18)) status("go home");
+    while(wait_until2(22)) status("eat dinner");
+    status("go to sleep");
+    while(wait_until2(6))  {
+      if(!(rand() %5)) status("Zzz");
+      if(!(rand() %5)) status("zhmn");
+    }
+    status("Wake up");
+    while(wait_until2(8)) status("go to forest");
+  }
 }
 
 void costack_test(){
  ccdispatch * d = ccstart();
- for(int i = 0 ; i < 100;i++){
-   ccthread(d,test,(void *)1); 
- }
 
- for(int i = 0; i < 100; i++){
+ ccthread(d,test,"kirk"); 
+ ccthread(d,test,"johnson"); 
+ ccthread(d,test,"rita"); 
+ ccthread(d,test,"steve"); 
+ for(int i = 8; i < 100; i++){
+   tclock = i;
+   printf("** time of day: %i:00 **\n", time_of_day());
    sem_post(&d->sem);
    usleep(1000000);
+   printf("** ** ** **\n\n");
  }
 }
