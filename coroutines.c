@@ -6,6 +6,7 @@
 #include "../bitguy/utils.h"
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdlib.h>
 #include <setjmp.h>
 #include <string.h>
@@ -26,16 +27,17 @@ int pthread_attr_getstack (const pthread_attr_t *__restrict __attr,
 int pthread_attr_setstack (pthread_attr_t *__attr, void *__stackaddr,
 			   size_t __stacksize);
 
-costack * stacks[] = {NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL,NULL, NULL, NULL,NULL, NULL, NULL, NULL};
+static costack ** stacks = NULL;
+static int stacks_count = 0;
 
-int stk_to_idx(costack * stk){
-  for(u32 i = 0 ; i < array_count(stacks); i++){
+static int stk_to_idx(costack * stk){
+  for(u32 i = 0 ; i < stacks_count; i++){
     if(stk == stacks[i]) return i;
   }
   return -1;
 }
 
-costack *idx_to_stk(int idx){
+static costack *idx_to_stk(int idx){
   return stacks[idx];
 }
 
@@ -43,7 +45,16 @@ costack * costack_create(pthread_attr_t * attr){
   costack * cc = malloc(sizeof(costack));
   memset(cc,0,sizeof(costack));
   cc->attr = *attr;
-  stacks[stk_to_idx(NULL)] = cc;
+  int nstk = stk_to_idx(NULL);
+  if(nstk == -1){
+    int ncnt = stacks_count == 0 ? 16 : (stacks_count * 2);
+    stacks = realloc(stacks,ncnt * sizeof(costack *));
+    for(int i = stacks_count; i < ncnt; i++)
+      stacks[i] = NULL;
+    stacks_count = ncnt;
+    nstk = stk_to_idx(NULL);
+  }
+  stacks[nstk] = cc;
   return cc;
 }
 
@@ -94,7 +105,12 @@ void costack_delete( costack * stk)
 
 // test //
 
-int yeild_states[100];
+#define CC_INITIALIZED 0
+#define CC_YEILDED 1
+#define CC_PRE_YEILD 2
+#define CC_RESUMED 3
+#define CC_ENDED 4
+int yeild_states[100] = {CC_INITIALIZED};
 
 costack ** ccstack(){
   static __thread costack * _stk = NULL;
@@ -113,35 +129,14 @@ void set_current_stack(costack * stk){
 void yield(){
   costack * stk = *ccstack();
   
-  yeild_states[stk_to_idx(stk)] = 0;
+  yeild_states[stk_to_idx(stk) - 1] = CC_PRE_YEILD;
   costack_save(stk);
-
-  yeild_states[stk_to_idx(stk)]++; 
-
-  int i = yeild_states[stk_to_idx(stk)];
-  if(i == 1){
+  if(yeild_states[stk_to_idx(stk) - 1] == CC_PRE_YEILD ){
+    yeild_states[stk_to_idx(stk) - 1] = CC_YEILDED; 
     costack_resume(*(mstack()));
+  }else{
+    yeild_states[stk_to_idx(stk) - 1] = CC_RESUMED; 
   }
-}
-
-void inner_test(int level){
-  for(int i = 0; i < level;i++){
-    yield();
-  }
-  yield();
-  if(level < 10)
-    inner_test(level + 1);
-}
-
-void iterate(int x){
-  printf("a\n");
-  yield();
-  printf("b %i\n",x);
-  yield();
-  inner_test(0);
-  printf("c\n");
-  yield();
-  printf("d\n");
 }
 
 struct _ccdispatch{
@@ -153,52 +148,88 @@ struct _ccdispatch{
   u32 last_stk;
   void (** loadfcn) (void *);
   void **userptrs;
+  sem_t sem;
 };
 
 static void * run_dispatcher(void * _attr){
   ccdispatch * dis = (ccdispatch *) _attr;
   dis->main_stack = costack_create(&dis->attr);
   *(mstack()) = dis->main_stack;
-  printf("Saving.. %i\n",dis->main_stack);
   costack_save(dis->main_stack);
   
   while(true){
-    
-    //usleep(1);
-    
+
     if(dis->stks_count == 0){
+      usleep(1);
       continue;
     }
+
+    if(dis->stks_count > dis->last_stk 
+       && (yeild_states[dis->last_stk] == CC_RESUMED || yeild_states[dis->last_stk] == CC_ENDED)
+       && dis->loadfcn[dis->last_stk] != NULL){
+      yeild_states[dis->last_stk] = CC_ENDED;
+      dis->loadfcn[dis->last_stk] = NULL;
+      dis->stks[dis->last_stk] = NULL;
+      printf("ta duh!\n");
+    }
+    
     dis->last_stk++;
-    dis->last_stk %= dis->stks_count;
+    if(dis->last_stk == dis->stks_count){
+      //dis->go = false;
+      //sem_setvalue(&dis->sem,-1);
+      sem_wait(&dis->sem);
+      dis->last_stk = 0;
+    }
     
     costack * _stk = dis->stks[dis->last_stk];
+	
     if(_stk == NULL){
+      if(dis->loadfcn[dis->last_stk] == NULL) continue;
+
       _stk = costack_create(&dis->attr);
       dis->stks[dis->last_stk] = _stk;
       set_current_stack(_stk);
       dis->loadfcn[dis->last_stk](dis->userptrs[dis->last_stk]);
     }else{
       set_current_stack(_stk);
+      int i_ = stk_to_idx(_stk);
+
+      yeild_states[i_ - 1] = CC_ENDED;
       costack_resume(_stk);
+      
     }
-  }
+   }
   return NULL;
 }
 
 void ccthread(ccdispatch * dis, void (*fcn) (void *), void * userdata){
-  dis->stks = realloc(dis->stks, dis->stks_count + 1);
-  dis->loadfcn = realloc(dis->loadfcn, dis->stks_count + 1);
-  dis->userptrs = realloc(dis->userptrs, dis->stks_count + 1);
-  dis->stks[dis->stks_count] = NULL;
-  dis->loadfcn[dis->stks_count] = fcn;
-  dis->userptrs[dis->stks_count] = userdata;
+  int nidx = dis->stks_count;
+  int ncnt = dis->stks_count + 1;
+  for(int i = 0; i < dis->stks_count;i++){
+    if(dis->loadfcn[i] == NULL){
+      printf("reuse..\n");
+      //nidx = i;
+      break;
+    }
+  }
+  if(nidx == dis->stks_count){
+
+    dis->stks = realloc(dis->stks, ncnt * sizeof(costack *));
+    dis->loadfcn = realloc(dis->loadfcn, ncnt * sizeof(void *));
+    dis->userptrs = realloc(dis->userptrs, ncnt * sizeof(void *));
+  }
+  dis->stks[nidx] = NULL;
+  yeild_states[dis->last_stk] = CC_INITIALIZED;
+  dis->loadfcn[nidx] = fcn;
+  dis->userptrs[nidx] = userdata;
   dis->stks_count += 1;
 }
 
 ccdispatch * ccstart(){
   ccdispatch * dis = malloc(sizeof(ccdispatch));
+
   memset(dis,0,sizeof(ccdispatch));
+  sem_init(&dis->sem,0, -1);
   int stacksize = 0x4000;
   void * stack = malloc(stacksize);
   memset(stack,0,stacksize);
@@ -208,21 +239,27 @@ ccdispatch * ccstart(){
   return dis;
 }
 
+void ccend(){
+  costack * stk = *ccstack();  
+}
+
 void test(void * data){
-  for(int i = 0; i < 10000;i++){
-    printf("%i %i __\n",i, data);
+  printf("data!\n");
+  for(int i = 0; i < 6;i++){
+    printf("v.. %i %i\n",i, data);
     yield();
-  }
+  } 
+  printf("done.\n");
 }
 
 void costack_test(){
  ccdispatch * d = ccstart();
- ccthread(d,test,(void *)1);
- usleep(100000);
- ccthread(d,test,(void *)2);
- usleep(200000);
- ccthread(d,test,(void *)0);
- usleep(3500000);
- ccthread(d,test,(void *)4);
- usleep(400000);
+ for(int i = 0 ; i < 100;i++){
+   ccthread(d,test,(void *)1); 
+ }
+
+ for(int i = 0; i < 100; i++){
+   sem_post(&d->sem);
+   usleep(1000000);
+ }
 }

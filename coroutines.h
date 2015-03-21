@@ -14,7 +14,7 @@ void costack_copy(costack * src, costack * dst);
 
 void ccyield();
 void ccfork();
-
+void ccend();
 typedef struct _ccdispatch ccdispatch;
 
 ccdispatch * ccstart();
