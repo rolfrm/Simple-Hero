@@ -5,7 +5,7 @@ TARGET = run
 OBJECTS =$(SOURCES:.c=.o)
 LDFLAGS=-L. -L../libconcurrency-read-only/  $(OPT) -Wextra #setrlimit on linux 
 LIBS= -lSDL2 -lSDL2_ttf -lSDL2_image -lSDL2_gfx -lGL -lm -lpthread
-CFLAGS =  -I../libconcurrency-read-only/libconcurrency/ -std=c11 -c $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0  -fno-strict-aliasing
+CFLAGS =  -I../libconcurrency-read-only/libconcurrency/ -std=c11 -c $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0  -fno-strict-aliasing -g3 -O0
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
