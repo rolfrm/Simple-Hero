@@ -122,7 +122,6 @@ void set_current_stack(costack * stk){
 
 void yield(){
   costack * stk = *ccstack();
-  
   yeild_states[stk_to_idx(stk) - 1] = CC_PRE_YEILD;
   costack_save(stk);
   if(yeild_states[stk_to_idx(stk) - 1] == CC_PRE_YEILD ){
@@ -131,6 +130,10 @@ void yield(){
   }else{
     yeild_states[stk_to_idx(stk) - 1] = CC_RESUMED; 
   }
+}
+
+void ccyield(){
+  yield();
 }
 
 struct _ccdispatch{
@@ -154,11 +157,8 @@ static void * run_dispatcher(void * _attr){
   costack_save(dis->main_stack);
   
   while(true){
-
-    if(dis->stks_count == 0){
-      continue;
-    }
-
+    if(dis->stks_count == 0) continue;
+    
     if(dis->stks_count > dis->last_stk 
        && (yeild_states[dis->last_stk] == CC_RESUMED || yeild_states[dis->last_stk] == CC_ENDED)
        && dis->loadfcn[dis->last_stk] != NULL){
@@ -203,7 +203,6 @@ void ccthread(ccdispatch * dis, void (*fcn) (void *), void * userdata){
     }
   }
   if(nidx == dis->stks_count){
-
     dis->stks = realloc(dis->stks, ncnt * sizeof(costack *));
     dis->loadfcn = realloc(dis->loadfcn, ncnt * sizeof(void *));
     dis->userptrs = realloc(dis->userptrs, ncnt * sizeof(void *));
@@ -217,7 +216,6 @@ void ccthread(ccdispatch * dis, void (*fcn) (void *), void * userdata){
 
 ccdispatch * ccstart(){
   ccdispatch * dis = malloc(sizeof(ccdispatch));
-
   memset(dis,0,sizeof(ccdispatch));
   sem_init(&dis->sem,0, -1);
   sem_init(&dis->running_sem,0, 1);
@@ -235,84 +233,23 @@ void ccstep(ccdispatch * dis){
   sem_post(&dis->sem);
 }
 
-// test //
-int tclock = 0;
-int time_of_day(){
-  return tclock % 24;
-}
-
-int day(){
-  return (tclock / 24) * 24;
-}
-
-int next_day(){
-  return day() + 24;
-}
-
-bool is_day(){
-  return time_of_day() > 8 && time_of_day() < 18;
-}
-
-void wait_until(int day_time){
-  int target = day() + day_time + (time_of_day() > day_time ? 24 : 0);
-  while(tclock < target) yield();
-}
-
-bool wait_until2(int day_time){
-  int target;
-  if(time_of_day() > day_time){
-    target = day() + 24 + day_time;
-  }else{
-    target = day() + day_time;
-  }
-  yield();
-  return tclock < target;
-}
-
-void test(void * data){
-  char * name = (char *) data;
-  void status(char * status){
-    printf("%s: %s..\n",name,status);
-  }
-  while(true){
-    int end_of_day = day() + 17;
-      while(tclock < end_of_day) {
-      status("Chopping wood");
-      yield();
-      if(!(rand() % 20)){
-	status("Spider! :( ");
-	int t = tclock + rand() % 10;
-	while(tclock < t){
-	  yield();
-	  status("Running around.. :( ");
-	}
-	status("getting back to work..\n");
-      }
-    }
-    status("Time to go home..");
-    while(wait_until2(18)) status("go home");
-    while(wait_until2(22)) status("eat dinner");
-    status("go to sleep");
-    while(wait_until2(6))  {
-      if(!(rand() %5)) status("Zzz");
-      if(!(rand() %5)) status("zhmn");
-    }
-    status("Wake up");
-    while(wait_until2(8)) status("go to forest");
-  }
-}
-
+// test / example of use //
 void costack_test(){
- ccdispatch * d = ccstart();
- ccthread(d,test,"kirk"); 
- ccthread(d,test,"johnson"); 
- ccthread(d,test,"rita"); 
- ccthread(d,test,"steve"); 
- for(int i = 8; i < 300; i++){
-   usleep(100000);
-   tclock = i;
-   printf("** time of day: %i:00 **\n", time_of_day());
+  void test(void * ptr){
+    char * name = (char *) ptr;
+    printf("%s: 1\n",name);
+    yield();
+    printf("%s: 2\n",name);
+    yield();
+  }
+  
+  ccdispatch * d = ccstart();
+  ccthread(d,test,"Kirk"); 
+  ccthread(d,test,"Clark"); 
+  ccthread(d,test,"Rita"); 
+  ccthread(d,test,"Steve"); 
+ for(int i = 0; i < 5; i++){
+   //usleep(10000);
    ccstep(d);
-   printf("** ** ** **\n\n");
  }
 }
