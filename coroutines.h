@@ -10,12 +10,3 @@ void costack_resume( costack * stk);
 void costack_delete( costack * stk);
 void costack_copy(costack * src, costack * dst);
 
-// microthreading
-
-void ccyield();
-void ccfork();
-void ccend();
-typedef struct _ccdispatch ccdispatch;
-
-ccdispatch * ccstart();
-void ccthread(ccdispatch * dispatcher, void (* fcn)(void *), void * userdata);

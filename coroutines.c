@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "coroutines.h"
-
+#include "microthreads.h"
 struct _costack{
   pthread_attr_t attr;
   void * stack;
@@ -28,16 +28,16 @@ int pthread_attr_setstack (pthread_attr_t *__attr, void *__stackaddr,
 			   size_t __stacksize);
 
 static costack ** stacks = NULL;
-static int stacks_count = 0;
+static size_t stacks_count = 0;
 
-static int stk_to_idx(costack * stk){
-  for(u32 i = 0 ; i < stacks_count; i++){
+static size_t stk_to_idx(costack * stk){
+  for(size_t i = 0 ; i < stacks_count; i++){
     if(stk == stacks[i]) return i;
   }
   return -1;
 }
 
-static costack *idx_to_stk(int idx){
+static costack *idx_to_stk(size_t idx){
   return stacks[idx];
 }
 
@@ -47,9 +47,9 @@ costack * costack_create(pthread_attr_t * attr){
   cc->attr = *attr;
   int nstk = stk_to_idx(NULL);
   if(nstk == -1){
-    int ncnt = stacks_count == 0 ? 16 : (stacks_count * 2);
+    size_t ncnt = stacks_count == 0 ? 16 : (stacks_count * 2);
     stacks = realloc(stacks,ncnt * sizeof(costack *));
-    for(int i = stacks_count; i < ncnt; i++)
+    for(size_t i = stacks_count; i < ncnt; i++)
       stacks[i] = NULL;
     stacks_count = ncnt;
     nstk = stk_to_idx(NULL);
@@ -66,25 +66,20 @@ void checkbuffer(void * data, size_t size){
   }
 }
 
- bool costack_save( costack * cc){
-   int stk = setjmp(((costack *)cc)->buf) - 1;
-   if(stk == -1){
-     size_t stacksize =0;
-     void * ptr = NULL;
-     pthread_attr_getstack(&((costack *)cc)->attr, &ptr, &stacksize);
-     if(cc->stack == NULL){
-       cc->stack = malloc(stacksize);
-     }
-     
-     cc->stacksize = stacksize;
-     void * stack = cc->stack;
-     //checkbuffer(ptr,stacksize);
-     memcpy(stack, ptr, stacksize);
-     
-     return false;
+bool costack_save( costack * cc){
+  int stk = setjmp(((costack *)cc)->buf) - 1;
+  if(stk == -1){
+    size_t stacksize =0;
+    void * ptr = NULL;
+    pthread_attr_getstack(&((costack *)cc)->attr, &ptr, &stacksize);
+    if(cc->stack == NULL) 
+      cc->stack = malloc(stacksize);
+    cc->stacksize = stacksize;
+    void * stack = cc->stack;
+    memcpy(stack, ptr, stacksize);
+    return false;
   }else{
-     cc = idx_to_stk(stk);
-     //resume stack
+    cc = idx_to_stk(stk);
     size_t stacksize =0;
     void * ptr = NULL;
     pthread_attr_getstack(&cc->attr, &ptr, &stacksize);
@@ -148,10 +143,12 @@ struct _ccdispatch{
   void (** loadfcn) (void *);
   void **userptrs;
   sem_t sem;
+  sem_t running_sem;
 };
 
 static void * run_dispatcher(void * _attr){
   ccdispatch * dis = (ccdispatch *) _attr;
+  sem_wait(&dis->sem);
   dis->main_stack = costack_create(&dis->attr);
   *(mstack()) = dis->main_stack;
   costack_save(dis->main_stack);
@@ -159,7 +156,6 @@ static void * run_dispatcher(void * _attr){
   while(true){
 
     if(dis->stks_count == 0){
-      usleep(1);
       continue;
     }
 
@@ -169,13 +165,11 @@ static void * run_dispatcher(void * _attr){
       yeild_states[dis->last_stk] = CC_ENDED;
       dis->loadfcn[dis->last_stk] = NULL;
       dis->stks[dis->last_stk] = NULL;
-      printf("ta duh!\n");
     }
     
     dis->last_stk++;
     if(dis->last_stk == dis->stks_count){
-      //dis->go = false;
-      //sem_setvalue(&dis->sem,-1);
+      sem_post(&dis->running_sem);
       sem_wait(&dis->sem);
       dis->last_stk = 0;
     }
@@ -191,11 +185,8 @@ static void * run_dispatcher(void * _attr){
       dis->loadfcn[dis->last_stk](dis->userptrs[dis->last_stk]);
     }else{
       set_current_stack(_stk);
-      int i_ = stk_to_idx(_stk);
-
-      yeild_states[i_ - 1] = CC_ENDED;
+      yeild_states[stk_to_idx(_stk) - 1] = CC_ENDED;
       costack_resume(_stk);
-      
     }
    }
   return NULL;
@@ -207,7 +198,7 @@ void ccthread(ccdispatch * dis, void (*fcn) (void *), void * userdata){
   for(int i = 0; i < dis->stks_count;i++){
     if(dis->loadfcn[i] == NULL){
       printf("reuse..\n");
-      //nidx = i;
+      nidx = i;
       break;
     }
   }
@@ -229,7 +220,8 @@ ccdispatch * ccstart(){
 
   memset(dis,0,sizeof(ccdispatch));
   sem_init(&dis->sem,0, -1);
-  int stacksize = 0x1000;
+  sem_init(&dis->running_sem,0, 1);
+  int stacksize = 0x4000;
   void * stack = malloc(stacksize);
   memset(stack,0,stacksize);
   pthread_attr_init(&dis->attr);
@@ -238,10 +230,10 @@ ccdispatch * ccstart(){
   return dis;
 }
 
-void ccend(){
-  costack * stk = *ccstack();  
+void ccstep(ccdispatch * dis){
+  sem_wait(&dis->running_sem);
+  sem_post(&dis->sem);
 }
-
 
 // test //
 int tclock = 0;
@@ -262,15 +254,8 @@ bool is_day(){
 }
 
 void wait_until(int day_time){
-  int target;
-  if(time_of_day() > day_time){
-    target = day() + 24 + day_time;
-  }else{
-    target = day() + day_time;
-  }
-  while(tclock < target){
-    yield();
-  }
+  int target = day() + day_time + (time_of_day() > day_time ? 24 : 0);
+  while(tclock < target) yield();
 }
 
 bool wait_until2(int day_time){
@@ -319,16 +304,15 @@ void test(void * data){
 
 void costack_test(){
  ccdispatch * d = ccstart();
-
  ccthread(d,test,"kirk"); 
  ccthread(d,test,"johnson"); 
  ccthread(d,test,"rita"); 
  ccthread(d,test,"steve"); 
- for(int i = 8; i < 100; i++){
+ for(int i = 8; i < 300; i++){
+   usleep(100000);
    tclock = i;
    printf("** time of day: %i:00 **\n", time_of_day());
-   sem_post(&d->sem);
-   usleep(1000000);
+   ccstep(d);
    printf("** ** ** **\n\n");
  }
 }
