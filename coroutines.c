@@ -249,7 +249,6 @@ void costack_test(){
   ccthread(d,test,"Rita"); 
   ccthread(d,test,"Steve"); 
  for(int i = 0; i < 5; i++){
-   //usleep(10000);
    ccstep(d);
  }
 }

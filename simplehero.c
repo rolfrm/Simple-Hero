@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "microthreads.h"
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
@@ -36,23 +37,28 @@ void _error(const char * file, int line, const char * str, ...){
   printf("** **\n");
 }
 
+void run_ai(ccdispatch * dispatcher, game_state * gs);
+
 int main(){
-  costack_test();
-  return 0;
-  i32 k = jump_consistent_hash(132132, 57);
-  i32 k2 = jump_consistent_hash_str("hello world!!!", 128);
-  u64 d1 = -1;
-  i32 k3 = jump_consistent_hash_raw(&d1,sizeof(d1),128);
-  printf("%i %i %i\n",k, k2,k3);
   player pl1 = {PLAYER, 0, 0};
   grass_leaf leaf = {GRASS, 100, 100};
-  
+  campfire campfire = {CAMPFIRE, 200, 200, 50};
   game_state state;
+  state.items = malloc(sizeof(game_obj) * 3);
   state.is_running = true;
   state.items[0].player = pl1;
   state.items[1].grass_leaf = leaf;
-  state.item_count = 2;
+  state.items[2].campfire = campfire;
+  state.item_count = 3;
+
+  ccdispatch * dis = ccstart();
+  for(int i = 0; i < 100;i++)
+    run_ai(dis,&state);
+  //ccstep(dis);
+  return 0;
+
   game_renderer * renderer = renderer_load();
+
   while(state.is_running){
     renderer_render_game(renderer,&state);      
     if(faulty)break;

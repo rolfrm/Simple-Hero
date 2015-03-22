@@ -1,68 +1,72 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "../bitguy/bitguy.h"
 #include "microthreads.h"
-// nanoseconds;
-typedef u64 _timestamp_;
-_timestamp_ tclock = 0;
+#include "game_object.h"
+#include "game_state.h"
 
-u64 clock_ns(_timestamp_ time){
+// nanoseconds;
+typedef u64 timestamp;
+timestamp tclock = 0;
+
+u64 clock_ns(timestamp time){
   return time;
 }
 
-_timestamp_ ns_clock(u64 nanoseconds){
+timestamp ns_clock(u64 nanoseconds){
   return nanoseconds;
 }
 
-u64 clock_us(_timestamp_ time){
+u64 clock_us(timestamp time){
   return clock_ns(time) / 1000;
 }
 
-_timestamp_ us_clock(u64 us){
+timestamp us_clock(u64 us){
   return ns_clock(us * 1000);
 }
 
-u64 clock_ms(_timestamp_ time){
+u64 clock_ms(timestamp time){
   return clock_us(time) / 1000;
 }
 
-_timestamp_ ms_clock(u64 ms){
+timestamp ms_clock(u64 ms){
   return us_clock(ms * 1000);
 }
 
-u64 clock_sec(_timestamp_ time){
+u64 clock_sec(timestamp time){
   return clock_ms(time) / 1000;
 }
 
-_timestamp_ sec_clock(u64 s){
+timestamp sec_clock(u64 s){
   return ms_clock(s * 1000);
 }
 
-u64 clock_min(_timestamp_ time){
+u64 clock_min(timestamp time){
   return clock_sec(time) / 60;
 }
 
-_timestamp_ min_clock(u64 m){
+timestamp min_clock(u64 m){
   return sec_clock(m * 60);
 }
 
-int clock_hour(_timestamp_ time){
+int clock_hour(timestamp time){
   return clock_min(time) / 60;
 }
 
-_timestamp_ hour_clock(u64 h){
+timestamp hour_clock(u64 h){
   return min_clock(h * 60);
 }
 
-int clock_day(_timestamp_ time){
+int clock_day(timestamp time){
   return clock_hour(time) / 24;
 }
 
-_timestamp_ day_clock(u64 d){
+timestamp day_clock(u64 d){
   return hour_clock(d * 24);
 }
 
-int clock_week(_timestamp_ time){
+int clock_week(timestamp time){
   return clock_day(time) / 7;
 }
 
@@ -85,23 +89,45 @@ bool wait_until2(int day_time){
   return tclock < target;
   }*/
 
-_timestamp_ today(_timestamp_ timestamp){
+timestamp today(timestamp timestamp){
   return day_clock(clock_day(timestamp));
 }
 
-void test(void * data){
-  char * name = (char *) data;
-  void status(char * status){
-    //printf("%s: %s..\n",name,status);
-  }
+typedef struct {
+  game_obj * thisobj;
+  game_state * gamestate;
+}gamedata;
+#include <stdio.h>
+void campfire_ai(void * _gamedata){
+  gamedata * _gd = (gamedata *) _gamedata;
   while(true){
-    _timestamp_ end_of_day = today(tclock) + hour_clock(17);
-    _timestamp_ start_of_day = today(tclock) + hour_clock(8);
-    while(start_of_day < tclock && tclock < end_of_day){
-      status("working");
+    while(_gd->thisobj->campfire.fuel > 0){
+      printf("burn.. %i\n",_gd->thisobj->campfire.fuel);
+      _gd->thisobj->campfire.fuel -= 10;
+      ccyield(); 
+    }
+    printf("the fire died..\n");
+    while(_gd->thisobj->campfire.fuel <= 0){
+      //printf("no more fuel..\n");
       ccyield();
     }
-    status("end of day");
-    ccyield();
   }
+}
+
+gamedata gamedatas[100] = {{NULL,NULL}};
+
+void run_ai( ccdispatch * dispatcher, game_state * gs){
+  for(int i = 0; i < gs->item_count;i++){
+    if(gamedatas[i].thisobj == NULL)
+      switch(gs->items[i].header){
+      case CAMPFIRE:
+	ccthread(dispatcher, campfire_ai,gamedatas + i);
+	gamedatas[i].thisobj = gs->items + i;
+	gamedatas[i].gamestate = gs;
+	break;
+      default:
+	break;
+      }
+  }
+  ccstep(dispatcher);
 }
