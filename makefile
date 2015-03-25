@@ -1,5 +1,5 @@
 OPT = -g
-SOURCES = simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c
+SOURCES = simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c
 CC = gcc
 TARGET = run
 OBJECTS =$(SOURCES:.c=.o)

@@ -98,19 +98,44 @@ typedef struct {
   game_state * gamestate;
 }gamedata;
 #include <stdio.h>
-void campfire_ai(void * _gamedata){
-  gamedata * _gd = (gamedata *) _gamedata;
+void campfire_ai(gamedata * gd){
   while(true){
-    while(_gd->thisobj->campfire.fuel > 0){
-      printf("burn.. %i\n",_gd->thisobj->campfire.fuel);
-      _gd->thisobj->campfire.fuel -= 10;
+    while(gd->thisobj->campfire.fuel > 0){
+      printf("burn.. %i\n",gd->thisobj->campfire.fuel);
+      gd->thisobj->campfire.fuel -= 10;
       ccyield(); 
     }
     printf("the fire died..\n");
-    while(_gd->thisobj->campfire.fuel <= 0){
+    while(gd->thisobj->campfire.fuel <= 0){
       //printf("no more fuel..\n");
       ccyield();
     }
+  }
+}
+
+void player_ai(gamedata * gd){
+  float x = gd->thisobj->player.x;
+  float y = gd->thisobj->player.y;
+  while(true){
+    
+    while(gd->thisobj->player.y-- - y > 0) ccyield();
+    while(gd->thisobj->player.y++ - y < 10) ccyield();
+    while(gd->thisobj->grass_leaf.x-- - x > 0) ccyield();
+    while(gd->thisobj->grass_leaf.y++ - y< 10) ccyield();
+    while(gd->thisobj->grass_leaf.x++ - x< 10) ccyield();
+    while(gd->thisobj->grass_leaf.y-- - y> 0) ccyield();
+  }
+}
+#include <stdlib.h>
+void grass_ai(gamedata * gd){
+  float x = gd->thisobj->player.x + (rand() % 200);
+  float y = gd->thisobj->player.y + (rand() % 200);
+  while(true){
+    printf("Im just grass..\n");
+    while(gd->thisobj->grass_leaf.x-- - x> 0 && (rand() % 15)) ccyield();
+    while(gd->thisobj->grass_leaf.y++ - y< 41  && (rand() % 15)) ccyield();
+    while(gd->thisobj->grass_leaf.x++ - x< 43  && (rand() % 15)) ccyield();
+    while(gd->thisobj->grass_leaf.y-- - y> 0  && (rand() % 15)) ccyield();
   }
 }
 
@@ -121,9 +146,19 @@ void run_ai( ccdispatch * dispatcher, game_state * gs){
     if(gamedatas[i].thisobj == NULL)
       switch(gs->items[i].header){
       case CAMPFIRE:
-	ccthread(dispatcher, campfire_ai,gamedatas + i);
 	gamedatas[i].thisobj = gs->items + i;
 	gamedatas[i].gamestate = gs;
+	ccthread(dispatcher, campfire_ai,gamedatas + i);
+	break;
+      case PLAYER:
+	gamedatas[i].thisobj = gs->items + i;
+	gamedatas[i].gamestate = gs;
+	ccthread(dispatcher, player_ai, gamedatas + i);
+	break;
+      case GRASS:
+	gamedatas[i].thisobj = gs->items + i;
+	gamedatas[i].gamestate = gs;
+	ccthread(dispatcher, grass_ai, gamedatas + i);
 	break;
       default:
 	break;

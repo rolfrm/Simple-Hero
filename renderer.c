@@ -125,35 +125,14 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   SDL_SetRenderTarget(renderer.renderer,renderer.left_target);
   SDL_SetRenderDrawColor(renderer.renderer, 255, 255, 255, 255);
   SDL_RenderClear(renderer.renderer);
-
-
-  filledCircleColor(renderer.renderer, 200, 200, 1, 0xFF000000);
-
-  double xydata[] =  {0.1577,0.9801,3.7123,-27.2236,-0.7071,-12.9047,-3.8891,-14.3189,1.4142,-6.5408,7.9868,4.3122,2.9734,9.2996,0.7071,11.8441,-1.591,23.1577,5.48,15.3796,-8.3085,2.2981};
-
-  int cnt = array_count(xydata)/2;
-  double x = xydata[0];
-  double y = xydata[1];
-  for(int i = 1 ; i < cnt;i++){
-    double * data = xydata + (i * 2);
-    double x1=x, y1 = y, x2 = data[0] + x, y2 = data[1] + y;
-    //lineColor(renderer.renderer, x1 + 350 ,y1 + 200, x2 + 350, y2 + 200,0xFF000000);
-    data[0] = x1;
-    data[1] = y1;
-    x = x2;
-    y = y2;
-  }
-
-  double widths[] = {1.0,1.0,0.5,1.0,1.0,1.0,1.0};
+  filledCircleColor(renderer.renderer, 1, 1, 1, 0xFF000000);
+  
+  double widths[] = {1.0,1.0,1.0,1.0};
   mat4 matrixes[array_count(widths)];
   vec3 points[array_count(widths) * 2]; //xyz and 3 pts.
-  for(u32 i = 0 ; i < array_count(widths);i++){
-    
+  for(u32 i = 0 ; i < array_count(widths);i++)
     matrixes[i] = mat4_translate(0.0,1.0,0.0);
-    if (i == array_count(widths) -3){
-      matrixes[i] = mat4_rotate_Z(mat4_rotate_Y(matrixes[i],1.0),0.1);
-    }
-  }
+  
   mat4 m = mat4_scale(mat4_translate(0.0,5.0,0.0),30.0);
   for(int i = 0; i < array_count(widths); i++){
     vec3 zero = {-widths[i],0.0,0.0};
@@ -176,14 +155,19 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
 
-  glTranslatef(100.0,100.0,0.0);
-  glColor4f(0.6,0.7,0.6,1.0);
-  
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glVertexPointer(2, GL_FLOAT, 0, xy3);
-  
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, array_count(xy3)/2 - 2);
-
+  glEnableClientState(GL_VERTEX_ARRAY);  
+  for(int i = 0; i < state->item_count; i++){
+    game_obj go = state->items[i];
+    glTranslatef(go.player.x,go.player.y,0.0);
+    glColor4f(0.6,0.7,0.6,1.0);
+    if(go.header == CAMPFIRE)
+      glColor4f(0.9,0.9,0.6,1.0);
+    if(go.header == GRASS)
+      glColor4f(0.2, 0.9, 0.3, 1.0);
+    glVertexPointer(2, GL_FLOAT, 0, xy3);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, array_count(xy3)/2 - 2);
+    glTranslatef(-go.player.x,-go.player.y,0.0);
+  }
   glDisableClientState(GL_VERTEX_ARRAY);
   //aacircleColor(renderer.renderer, 200, 200, 100, 0xFF000000);
   //aapolygonColor(renderer.renderer,xy2, xy2 + array_count(xydata)/2, array_count(xydata)/2, 0xFF0000000);
