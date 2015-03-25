@@ -14,6 +14,8 @@
 #include "game_object.h"
 #include "game_state.h"
 #include "renderer.h"
+#include "circle.h"
+
 
 char * text = "I said goodbye to everyone and embarked on the journey.\n"\
   "\n" \
@@ -102,10 +104,24 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   static bool first = true;
   static SDL_Surface * surf = NULL; 
   static   SDL_Texture * tex = NULL;
+  static SDL_Texture * circ = NULL;
   SDL_Rect dst;
   if(first){
     surf = TTF_RenderText_Blended_Wrapped(renderer.font, text, color, 600);
     tex = SDL_CreateTextureFromSurface(renderer.renderer, surf);
+    int w = 512;
+    circle circles[] = {{{160,160},100}
+			,{{160,160 + 100},80}
+			,{{160,160 + 20},30}};
+    circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
+    u8 * image = malloc(w * w);
+    
+    draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
+
+    circ = SDL_CreateTexture(renderer.renderer,SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STATIC,w,w);
+    SDL_UpdateTexture(circ, NULL, image, w);
+    free(image);
+
     first = false;
   }
 
@@ -154,14 +170,13 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   glDisable( GL_DEPTH_TEST ); 
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
-
   glEnableClientState(GL_VERTEX_ARRAY);  
   for(int i = 0; i < state->item_count; i++){
     game_obj go = state->items[i];
     glTranslatef(go.player.x,go.player.y,0.0);
     glColor4f(0.6,0.7,0.6,1.0);
     if(go.header == CAMPFIRE)
-      glColor4f(0.9,0.9,0.6,1.0);
+      glColor4f(0.9, 0.9, 0.6, 1.0);
     if(go.header == GRASS)
       glColor4f(0.2, 0.9, 0.3, 1.0);
     glVertexPointer(2, GL_FLOAT, 0, xy3);
@@ -219,6 +234,9 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   dst.x = 600;
   SDL_QueryTexture(renderer.right_target, NULL, NULL, &dst.w, &dst.h);
   SDL_RenderCopy(renderer.renderer, renderer.right_target,NULL,&dst);
+
+  SDL_QueryTexture(circ, NULL, NULL, &rect.w, &rect.h);
+  SDL_RenderCopy(renderer.renderer, circ, NULL, &rect);
   SDL_RenderPresent(renderer.renderer);
   checkRenderError();
   
