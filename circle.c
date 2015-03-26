@@ -50,25 +50,36 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   return true;
 }
 #include <stdio.h>
-
+#include <string.h>
 void draw_circle_system(circle * circles, int circ_count,
 			circle_tree * ctree, int ctree_count, 
 			u8 * out_image, int width, int height){
   void blit(int ctree_index, u8 * buffer){
     circle_tree nd = ctree[ctree_index];
+    memset(buffer,0,width * height);
     if(nd.func == LEAF){
       circle circ = circles[nd.circle];
       int x = (int)circ.xy.x;
       int y = (int)circ.xy.y;
       int r2 = (int)(circ.r * circ.r);
-      for(int j = 0; j < height; j++)
-	for(int i = 0; i < width; i++){
-	  int dx = x - i;
-	  int dy = y - j;
-	  int d = (dx * dx) + (dy * dy);
-	  buffer[i + j * width] = d < r2 ? 255 : 0;
+      //
+      //    #  
+      //   ###
+      //  #####
+      //  #####
+      //   ###
+      //    #
+      //
+      // y * y - r * r = x * x
+      for(int j = 0; j < height; j++){
+	int dy = y - j;
+	int dif = sqrt(MAX(0, r2 - dy * dy));
+	int mid = j * width + x;
+	int sx = MAX(mid - dif,j * width);
+	int ex = MIN(mid + dif,(j + 1) * width - 1);
+	memset(buffer + sx,255,ex - sx);
 	}
-      
+
     }else{
       u8 * buf2 = malloc(width * height);
       blit(nd.left, buffer);
@@ -137,7 +148,7 @@ bool test_draw_circle_system(){
 
 void circle_bench_test(){
   int w = 512 * 8;
-  circle circles[] = {{{160,160},100}
+  circle circles[] = {{{w/2,w/2},1000}
 		      ,{{160,160 + 100},80}
 		      ,{{160,160 + 20},30}};
   circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
