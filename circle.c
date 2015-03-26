@@ -88,7 +88,6 @@ void draw_circle_system(circle * circles, int circ_count,
       u128 * buf = buf2;
       u128 * end = buf + width * height / sizeof(u128);
       u128 * bufo = buffer;
-      printf("%i %i\n", (int)buf2, (int)buf);
       switch(nd.func){
       case ADD:
 	for(;buf < end;bufo++, buf++)
