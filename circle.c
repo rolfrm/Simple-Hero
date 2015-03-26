@@ -49,7 +49,7 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   *out_tleave = r2;
   return true;
 }
-
+#include <stdio.h>
 
 void draw_circle_system(circle * circles, int circ_count,
 			circle_tree * ctree, int ctree_count, 
@@ -73,27 +73,23 @@ void draw_circle_system(circle * circles, int circ_count,
       u8 * buf2 = malloc(width * height);
       blit(nd.left, buffer);
       blit(nd.right, buf2);
+      int size = width * height;
+      u128 * buf = buf2;
+      u128 * end = buf + width * height / sizeof(u128);
+      u128 * bufo = buffer;
+      printf("%i %i\n", (int)buf2, (int)buf);
       switch(nd.func){
       case ADD:
-	for(int j = 0; j < height; j++)
-	  for(int i = 0; i < width; i++){
-	    int idx = i + j * width;
-	    buffer[idx] = buffer[idx] | buf2[idx];
-	  }
+	for(;buf < end;bufo++, buf++)
+	  *bufo |= *buf;
 	break;
       case SUB:
-	for(int j = 0; j < height; j++)
-	  for(int i = 0; i < width; i++){
-	    int idx = i + j * width;
-	    buffer[idx] = buffer[idx] & ~buf2[idx];
-	  }
+	for(;buf < end;bufo++, buf++)
+	  *bufo &= ~(*buf);
 	break;
       case ISEC:
-	for(int j = 0; j < height; j++)
-	  for(int i = 0; i < width; i++){
-	    int idx = i + j * width;
-	    buffer[idx] = buffer[idx] & buf2[idx];
-	  }
+	for(;buf < end;bufo++, buf++)
+	  *bufo &= *buf;
 	break;
       }
       free(buf2);
@@ -115,7 +111,7 @@ bool test_circle_sweep(){
   bool collides2 = circle_sweep(a,b,dv,&enter,&leave);
   return collides && collides2 && enter == 0.0;
 }
-#include <stdio.h>
+
 void print_image(u8 * img, int w, int h){
   for(int j = 0; j < h; j++){
     for(int i = 0; i < w; i++)
