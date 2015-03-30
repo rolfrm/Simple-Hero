@@ -74,55 +74,25 @@ void draw_circle_system(circle * circles, int circ_count,
 	if(d <= 1.0 && d >= 0)
 	  buffer[_x + _y * width] = 255 * (1.0 - d);
       }
-      
-
       int ystart = MAX(0, y - circ.r);
       int yend = MIN(height-1, y + circ.r + 1);
       float r2 = circ.r * circ.r;
       for(int j = ystart; j < yend; j++){
 	int dy = y - j;
 	float diff = sqrt(MAX(0, (circ.r + 1) * (circ.r + 1) - dy * dy));
-	int xstart = MAX(0, x - diff);
-	int xend = MIN(width-1, x + diff + 1);
-	for(int i = xstart ; i < xend; i++){
+	float diff_small = sqrt(MAX(0, (circ.r - 1) * (circ.r - 1) - dy * dy));
+	int xstartaa = MAX(0, x - diff);
+	int xstart = MAX(0,x - diff_small);
+	int xendaa = MIN(width-1, x + diff + 1);
+	int xend = MIN(width-1, x + diff_small + 1);
+	for(int i = xstartaa ; i < xstart; i++){
 	  paint_pt(i,j);
 	}
-      }
-	  
-
-      /*
-
-      //printf("--\n");
-
-      for(int j = 0; j < height; j++){
-	
-	float dy = circ.xy.y - j;
-	float dif = sqrt(MAX(0, r2 - dy * dy));
-	int mid = x;
-	int sx = MAX(x - dif,0);
-	int ex = MIN(x + dif,width - 1);
-
-	memset(buffer + sx + j * width,255,ex - sx);
-	// supersampling //
-	
-	float dif2 = 0.0; 
-	int off2 = dy > 0 ? -1 : 1;
-	dif2 = sqrt(MAX(0.0, r2 - (dy + off2) * (dy + off2)));
-
-	int sx2 = MAX(x - dif2,0);
-	int ex2 = MIN(x + dif2 + 1,width - 1);
-
-
-	sx2 -=1;
-	for(;sx2 < sx;sx2++)
-	  paint_pt(sx2,j + off2);
-	ex -= 1;
-	for(;ex  < ex2;ex++)
-	  paint_pt(ex,j + off2);
-
-	  }*/
-      
-      printf("--\n");
+	for(int i = xend ; i < xendaa ; i++){
+	  paint_pt(i,j);
+	}
+	memset(buffer + xstart + j * width,255,xend - xstart);
+      }	  
     }else{
       u8 * buf2 = malloc(width * height);
       blit(nd.left, buffer);

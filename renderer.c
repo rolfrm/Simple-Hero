@@ -97,8 +97,9 @@ void renderer_unload(game_renderer * renderer){
   free (renderer);
   SDL_Quit();
 }
-
+int runid = 0;
 void renderer_render_game(game_renderer * _renderer, game_state * state){
+  runid++;
   game_renderer renderer = *_renderer;
   SDL_Color color = {0,0,0,255};
   static bool first = true;
@@ -106,33 +107,45 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   static SDL_Texture * tex = NULL;
   static SDL_Texture * circ = NULL;
   SDL_Rect dst;
+  int w = 512;
+  static u8 * image;
+  static   u8 * image24;
+
   if(first){
     surf = TTF_RenderText_Blended_Wrapped(renderer.font, text, color, 600);
     tex = SDL_CreateTextureFromSurface(renderer.renderer, surf);
-    int w = 512;
-    circle circles[] = {{{160,160},100}
-			,{{160,160 + 100},80}
-			,{{160,160 + 20},30}};
-    //circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
-    circle_tree tree[] = {{LEAF,0,0},{SUB,1,2}, {LEAF,0,0},{LEAF,1,0}};
-    u8 * image = malloc(w * w);
-    u8 * image24 = malloc(w * w * 4);
-    draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
-    for(int i = 0; i < w * w; i++){
-      int idx2 = i * 4;
-      image24[idx2] = image[i];
-      image24[idx2 + 1] = image[i];
-      image24[idx2 + 2] = image[i];
-    }
-
+    image = malloc(w * w);
+    image24 = malloc(w * w * 4);
     circ = SDL_CreateTexture(renderer.renderer,SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STATIC,w,w);
-    SDL_UpdateTexture(circ, NULL, image24, w * 4);
-    free(image);
-    free(image24);
-
     first = false;
   }
+  
+  circle circles[] = {
+    {{160,160},100}
+    ,{{160,160 + 100},80}
+    ,{{160,180 + 60 * sin(runid * 0.1)},45},
+    
+    {{160 + 40,160},100}
+    ,{{160 + 40,160 + 100},80}
+    ,{{160 + 40,180 + 60 * sin(runid * 0.1)},45},
+    {200,200,200}
+  };
+  //circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
+  circle_tree tree[] = {{SUB,1,2},  {LEAF,3,0},{ISEC,3,4}, 
+			{SUB,5,6},  {LEAF,0,0},{LEAF,1,0}, 
+			{LEAF,2,0},{ISEC,3,4}, {SUB,5,6},  
+			{LEAF,0,0},{LEAF,1,0}, {LEAF,2,0}};
+    
 
+
+  draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
+  for(int i = 0; i < w * w; i++){
+    int idx2 = i * 4;
+    image24[idx2] = image[i];
+    image24[idx2 + 1] = image[i];
+    image24[idx2 + 2] = image[i];
+  }
+  SDL_UpdateTexture(circ, NULL, image24, w * 4);
   // render text:
   SDL_SetRenderTarget(renderer.renderer,renderer.right_target);
   SDL_SetRenderDrawColor(renderer.renderer, 255, 255, 255, 255);
