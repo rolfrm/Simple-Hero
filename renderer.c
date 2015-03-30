@@ -93,7 +93,6 @@ game_renderer * renderer_load(){
 }
 
 void renderer_unload(game_renderer * renderer){
-  
   free (renderer);
   SDL_Quit();
 }
@@ -114,7 +113,7 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
 			,{{160,160 + 100},80}
 			,{{160,160 + 20},30}};
     //circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
-    circle_tree tree[] = {{LEAF,0,0},{SUB,1,2}, {LEAF,0,0},{LEAF,1,0}};
+    circle_tree tree[] = {{SUB,1,3},{ADD,1,2},{LEAF,1,2},{SUB,1,2},{LEAF,0,0},{LEAF,1,0}};
     u8 * image = malloc(w * w);
     u8 * image24 = malloc(w * w * 4);
     draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);

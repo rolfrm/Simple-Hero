@@ -56,11 +56,9 @@ void draw_circle_system(circle * circles, int circ_count,
 			circle_tree * ctree, int ctree_count, 
 			u8 * out_image, int width, int height){
   
-  void blit(int ctree_index, u8 * buffer){
-    
-    
-    circle_tree nd = ctree[ctree_index];
+  void blit(circle_tree * ctree, u8 * buffer){
     memset(buffer,0,width * height);
+    circle_tree nd = *ctree;
     if(nd.func == LEAF){
       circle circ = circles[nd.circle];
       int x = (int)circ.xy.x;
@@ -88,45 +86,10 @@ void draw_circle_system(circle * circles, int circ_count,
 	  paint_pt(i,j);
 	}
       }
-	  
-
-      /*
-
-      //printf("--\n");
-
-      for(int j = 0; j < height; j++){
-	
-	float dy = circ.xy.y - j;
-	float dif = sqrt(MAX(0, r2 - dy * dy));
-	int mid = x;
-	int sx = MAX(x - dif,0);
-	int ex = MIN(x + dif,width - 1);
-
-	memset(buffer + sx + j * width,255,ex - sx);
-	// supersampling //
-	
-	float dif2 = 0.0; 
-	int off2 = dy > 0 ? -1 : 1;
-	dif2 = sqrt(MAX(0.0, r2 - (dy + off2) * (dy + off2)));
-
-	int sx2 = MAX(x - dif2,0);
-	int ex2 = MIN(x + dif2 + 1,width - 1);
-
-
-	sx2 -=1;
-	for(;sx2 < sx;sx2++)
-	  paint_pt(sx2,j + off2);
-	ex -= 1;
-	for(;ex  < ex2;ex++)
-	  paint_pt(ex,j + off2);
-
-	  }*/
-      
-      printf("--\n");
     }else{
       u8 * buf2 = malloc(width * height);
-      blit(nd.left, buffer);
-      blit(nd.right, buf2);
+      blit(ctree + nd.left, buffer);
+      blit(ctree + nd.right, buf2);
       int size = width * height;
       u128 * buf = buf2;
       u128 * end = buf + width * height / sizeof(u128);
@@ -148,8 +111,19 @@ void draw_circle_system(circle * circles, int circ_count,
       free(buf2);
     }
   }
-  blit(0,out_image);
+  blit(ctree,out_image);
 }
+
+int circle_tree_size(circle_tree * tr){
+  if(tr->func == LEAF)
+    return 1;
+  return 1 + circle_tree_size(tr + tr->left) 
+    + circle_tree_size(tr + tr->right);  
+}
+
+//circ_tree sub_tree(circle_fun fcn, circ_tree * a, circ_tree * b){
+  
+//} 
 
 // testing //
 
@@ -182,7 +156,7 @@ bool test_draw_circle_system(){
   circle circles[] = {{{16,16},10}
 		      ,{{16,16 + 4},5}
 		      ,{{16,16},3}};
-  circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,3,4},{LEAF,1,0},{LEAF,2,0}};
+  circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
   u8 image[w*w];
   draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
   print_image(image,w,w);
@@ -194,7 +168,9 @@ void circle_bench_test(){
   circle circles[] = {{{w/2,w/2},3}
 		      ,{{w/2,w/2 },3}
 		      ,{{w/2,w/2 },3}};
-  circle_tree tree[] = {{LEAF,0,0},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
+  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{ADD,1,2},{LEAF,1,0},{LEAF,2,0}};
+  int size = circle_tree_size(tree);
+  printf("size: %i\n",size);
   u8 * image = malloc(w * w);
   draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
   free(image);
@@ -209,7 +185,6 @@ void circle_bench(){
 
 bool test_circle(){
   circle_bench();
-  return true;
   return test_circle_sweep() 
     & test_draw_circle_system();
 }

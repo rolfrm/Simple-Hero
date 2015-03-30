@@ -26,5 +26,12 @@ void draw_circle_system(circle * circles, int circ_count,
 			u8 * out_image, int width, int height);
 
 
+typedef struct{
+  circle_tree * tree;
+  circle * circles;
+}circ_tree;
+
+
+
 
 bool test_circle();
