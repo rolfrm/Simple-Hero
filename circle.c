@@ -24,8 +24,8 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   //b = 2 * dv * o
   //a = dv^2
   //c = o^2 - totr  
-  // solve  = totr^2
-  
+  // solve  = quadratic eq.
+  // ** ** //
   float totr = a.r + b.r;
   vec2 o = vec2_sub(b.xy, a.xy);
   
@@ -49,66 +49,78 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   *out_tleave = r2;
   return true;
 }
+
 #include <stdio.h>
 #include <string.h>
 void draw_circle_system(circle * circles, int circ_count,
 			circle_tree * ctree, int ctree_count, 
 			u8 * out_image, int width, int height){
+  
   void blit(int ctree_index, u8 * buffer){
+    
+    
     circle_tree nd = ctree[ctree_index];
     memset(buffer,0,width * height);
     if(nd.func == LEAF){
       circle circ = circles[nd.circle];
       int x = (int)circ.xy.x;
       int y = (int)circ.xy.y;
-      int r2 = (int)(circ.r * circ.r);
-      //
-      //    #  
-      //   ###
-      //  #####
-      //  #####
-      //   ###
-      //    #
-      //
-      // y * y - r * r = x * x
-      printf("--\n");
+      
+      void paint_pt(int _x, int _y){
+	int dx = x - _x;
+	int dy = y - _y;
+	float d = MAX(0.0, sqrt(dx * dx + dy * dy) - circ.r);
+	
+	if(d <= 1.0 && d >= 0)
+	  buffer[_x + _y * width] = 255 * (1.0 - d);
+      }
+      
+
+      int ystart = MAX(0, y - circ.r);
+      int yend = MIN(height-1, y + circ.r + 1);
+      float r2 = circ.r * circ.r;
+      for(int j = ystart; j < yend; j++){
+	int dy = y - j;
+	float diff = sqrt(MAX(0, (circ.r + 1) * (circ.r + 1) - dy * dy));
+	int xstart = MAX(0, x - diff);
+	int xend = MIN(width-1, x + diff + 1);
+	for(int i = xstart ; i < xend; i++){
+	  paint_pt(i,j);
+	}
+      }
+	  
+
+      /*
+
+      //printf("--\n");
+
       for(int j = 0; j < height; j++){
+	
 	float dy = circ.xy.y - j;
-	int dif = sqrt(MAX(0, r2 - dy * dy));
+	float dif = sqrt(MAX(0, r2 - dy * dy));
 	int mid = x;
 	int sx = MAX(x - dif,0);
-	int ex = MIN(x + dif + 1,width - 1);
-	if((ex - sx) == 1) continue;
+	int ex = MIN(x + dif,width - 1);
 
 	memset(buffer + sx + j * width,255,ex - sx);
-	continue;
 	// supersampling //
 	
 	float dif2 = 0.0; 
-	if(dy > 0)
-	  dif2 = sqrt(MAX(0, r2 - (dy - 1) * (dy - 1)));
-	else
-	  dif2 = sqrt(MAX(0, r2 - (dy + 1) * (dy + 1)));
+	int off2 = dy > 0 ? -1 : 1;
+	dif2 = sqrt(MAX(0.0, r2 - (dy + off2) * (dy + off2)));
+
 	int sx2 = MAX(x - dif2,0);
 	int ex2 = MIN(x + dif2 + 1,width - 1);
 
-	void paint_pt(int _x, int _y){
-	  int dx = x - _x;
-	  int dy = y - _y;
-	  float d = sqrt(dx * dx + dy * dy) - circ.r;
-	  if(d <= 1.0 && d >= 0)
-	    buffer[_x + _y * width] = 255 * (1.0 - d);
-	}
-	//paint_pt(sx - 1,j);
-	//paint_pt(ex, j);
-	printf("dif: %f %f\n", dif,dif2);
+
+	sx2 -=1;
 	for(;sx2 < sx;sx2++)
-	  paint_pt(sx2,j);
-	//ex +;
-	//ex -=1;
-	for(;ex  < ex2+2;ex++)
-	  paint_pt(ex-1,j);
-      }
+	  paint_pt(sx2,j + off2);
+	ex -= 1;
+	for(;ex  < ex2;ex++)
+	  paint_pt(ex,j + off2);
+
+	  }*/
       
       printf("--\n");
     }else{
