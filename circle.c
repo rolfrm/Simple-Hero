@@ -52,8 +52,8 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
 
 #include <stdio.h>
 #include <string.h>
-void draw_circle_system(circle * circles, int circ_count,
-			circle_tree * ctree, int ctree_count, 
+void draw_circle_system(circle * circles,
+			circle_tree * ctree, 
 			u8 * out_image, int width, int height){
   
   void blit(circle_tree * ctree, u8 * buffer){
@@ -72,20 +72,25 @@ void draw_circle_system(circle * circles, int circ_count,
 	if(d <= 1.0 && d >= 0)
 	  buffer[_x + _y * width] = 255 * (1.0 - d);
       }
-      
-
       int ystart = MAX(0, y - circ.r);
       int yend = MIN(height-1, y + circ.r + 1);
       float r2 = circ.r * circ.r;
       for(int j = ystart; j < yend; j++){
 	int dy = y - j;
 	float diff = sqrt(MAX(0, (circ.r + 1) * (circ.r + 1) - dy * dy));
-	int xstart = MAX(0, x - diff);
-	int xend = MIN(width-1, x + diff + 1);
-	for(int i = xstart ; i < xend; i++){
+	float diff_small = sqrt(MAX(0, (circ.r - 1) * (circ.r - 1) - dy * dy));
+	int xstartaa = MAX(0, x - diff);
+	int xstart = MAX(0,x - diff_small);
+	int xendaa = MIN(width-1, x + diff + 1);
+	int xend = MIN(width-1, x + diff_small + 1);
+	for(int i = xstartaa ; i < xstart; i++){
 	  paint_pt(i,j);
 	}
-      }
+	for(int i = xend ; i < xendaa ; i++){
+	  paint_pt(i,j);
+	}
+	memset(buffer + xstart + j * width,255,xend - xstart);
+      }	  
     }else{
       u8 * buf2 = malloc(width * height);
       blit(ctree + nd.left, buffer);
@@ -121,9 +126,48 @@ int circle_tree_size(circle_tree * tr){
     + circle_tree_size(tr + tr->right);  
 }
 
-//circ_tree sub_tree(circle_fun fcn, circ_tree * a, circ_tree * b){
+int circle_tree_max_leaf(circle_tree * tr){
+  if(tr->func == LEAF){
+    return tr->circle;
+  }
+  return MAX(tr->left,tr->right);
+}
+
+circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b){
+  int leftsize = circle_tree_size(a->tree);
+  int leftleafs = circle_tree_max_leaf(a->tree) + 1;
+  int rightsize = circle_tree_size(b->tree);
+  int rightleafs = circle_tree_max_leaf(b->tree) + 1;
   
-//} 
+  int circlesize = sizeof(circle) * (leftleafs  + rightleafs);
+  int treesize =  sizeof(circle_tree) * (1 + leftsize + rightsize);
+  int totsize = sizeof(circ_tree) + circlesize + treesize;
+    
+  printf("%i %i %i\n",leftsize,rightsize,totsize);
+  void * memblock = malloc(totsize);
+  
+  circ_tree * c = memblock;
+  circle * circs =  memblock + sizeof(circ_tree);
+  circle_tree * tree = memblock + sizeof(circ_tree) + circlesize;
+  c->tree =tree;
+  c->circles =circs;
+  memcpy(tree + 1 , a->tree, sizeof(circle_tree) * leftsize);
+  memcpy(tree + 1 + leftsize, b->tree, sizeof(circle_tree) * rightsize);
+  memcpy(circs, a->circles, leftleafs * sizeof(circle));
+  memcpy(circs + leftleafs, b->circles, rightleafs * sizeof(circle));
+  
+  tree->func = fcn;
+  tree->left = 1;
+  tree->right = leftsize;
+  return c;
+} 
+
+void circle_move(circle * c, int count, float mx, float my){
+  for(int i = 0; i < count; i++){
+    c[i].xy.x += mx;
+    c[i].xy.y += my;
+  }
+}
 
 // testing //
 
@@ -151,14 +195,25 @@ void print_image(u8 * img, int w, int h){
 
 
 bool test_draw_circle_system(){
-
   int w = 32;
   circle circles[] = {{{16,16},10}
 		      ,{{16,16 + 4},5}
 		      ,{{16,16},3}};
   circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
+  circle circles2[] = {{{16,16},10}
+		      ,{{16,16 + 4},5}
+		      ,{{16,16},3}};
+  circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
+
+  circ_tree ct = {tree, circles};
+  circ_tree ct2 = {tree2, circles2};
+  ct2.circles = circles2;
+  ct2.tree = tree2;
+  circle_move(circles2,array_count(circles2),30,0);
+  circ_tree * nct = sub_tree(ADD,&ct,&ct2);
+
   u8 image[w*w];
-  draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
+  draw_circle_system(circles,tree,image,w,w);
   print_image(image,w,w);
   return true;
 }
@@ -170,9 +225,11 @@ void circle_bench_test(){
 		      ,{{w/2,w/2 },3}};
   circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{ADD,1,2},{LEAF,1,0},{LEAF,2,0}};
   int size = circle_tree_size(tree);
+  int leafs = circle_tree_max_leaf(tree);
   printf("size: %i\n",size);
+  printf("leaf: %i\n",leafs);
   u8 * image = malloc(w * w);
-  draw_circle_system(circles,array_count(circles),tree,array_count(tree),image,w,w);
+  draw_circle_system(circles,tree,image,w,w);
   free(image);
 }
 

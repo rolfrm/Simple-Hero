@@ -21,8 +21,7 @@ typedef struct _circle_tree{
 }circle_tree;
 
 
-void draw_circle_system(circle * circles, int circ_count,
-			circle_tree * ctree, int ctree_count, 
+void draw_circle_system(circle * circles, circle_tree * ctree,
 			u8 * out_image, int width, int height);
 
 
