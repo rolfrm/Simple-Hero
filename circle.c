@@ -83,13 +83,12 @@ void draw_circle_system(circle * circles,
 	int xstart = MAX(0,x - diff_small);
 	int xendaa = MIN(width-1, x + diff + 1);
 	int xend = MIN(width-1, x + diff_small + 1);
-	for(int i = xstartaa ; i < xstart; i++){
+	if(xstart > xend) continue;
+	for(int i = xstartaa ; i < xstart; i++)
 	  paint_pt(i,j);
-	}
-	for(int i = xend ; i < xendaa ; i++){
+	for(int i = xend ; i < xendaa ; i++)
 	  paint_pt(i,j);
-	}
-	memset(buffer + xstart + j * width,255,xend - xstart);
+	memset(buffer + xstart + j * width,255, xend - xstart);
       }	  
     }else{
       u8 * buf2 = malloc(width * height);
@@ -155,17 +154,29 @@ circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b){
   memcpy(tree + 1 + leftsize, b->tree, sizeof(circle_tree) * rightsize);
   memcpy(circs, a->circles, leftleafs * sizeof(circle));
   memcpy(circs + leftleafs, b->circles, rightleafs * sizeof(circle));
-  
+  for(int i = 0 ; i <rightsize;i++){
+    circle_tree * ct2 = tree + i + leftsize + 1;
+    if(ct2->func == LEAF){
+      ct2->circle += leftleafs;
+      printf("LEAF:\n");
+    }
+  }
   tree->func = fcn;
   tree->left = 1;
-  tree->right = leftsize;
+  tree->right = leftsize + 1;
   return c;
 } 
+	  
+void circle_tform(circle * c, int count, mat3 t){
+  for(int i = 0 ; i < count; i++)
+    c[i].xy = mat3_mul_vec2(t, c[i].xy);
+}
 
-void circle_move(circle * c, int count, float mx, float my){
+
+void circle_move(circle * c, int count, vec2 xy){
   for(int i = 0; i < count; i++){
-    c[i].xy.x += mx;
-    c[i].xy.y += my;
+    c[i].xy.x += xy.x;
+    c[i].xy.y += xy.y;
   }
 }
 
@@ -193,27 +204,33 @@ void print_image(u8 * img, int w, int h){
   }
 }
 
-
 bool test_draw_circle_system(){
   int w = 32;
-  circle circles[] = {{{16,16},10}
-		      ,{{16,16 + 4},5}
-		      ,{{16,16},3}};
+  circle circles[] = {{{0/2,0},10}
+		      ,{{0/2,0 + 4},5}
+		      ,{{0/2,0},3}};
   circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
-  circle circles2[] = {{{16,16},10}
-		      ,{{16,16 + 4},5}
-		      ,{{16,16},3}};
+  circle circles2[] = {{{0/2,0},10}
+		      ,{{0/2,0 + 4},5}
+		      ,{{0/2,0},3}};
   circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
 
+  mat3 m = mat3_2d_rotation(2.14);
+  circle_tform(circles2,array_count(circles2), m);
+  circle_tform(circles,array_count(circles), m);
+  circle_tform(circles,array_count(circles), mat3_2d_translation(20,20));
+  circle_move(circles2,array_count(circles2), (vec2){50,50});
   circ_tree ct = {tree, circles};
   circ_tree ct2 = {tree2, circles2};
   ct2.circles = circles2;
   ct2.tree = tree2;
-  circle_move(circles2,array_count(circles2),30,0);
+
   circ_tree * nct = sub_tree(ADD,&ct,&ct2);
 
   u8 image[w*w];
+  //draw_circle_system(circles,tree,image,w,w);
   draw_circle_system(circles,tree,image,w,w);
+  free(nct);
   print_image(image,w,w);
   return true;
 }

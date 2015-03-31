@@ -122,22 +122,35 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   }
   
   circle circles[] = {
-    {{160,160},100}
-    ,{{160,160 + 100},80}
-    ,{{160,180 + 60 * sin(runid * 0.1)},45},
-    
-    {{160 + 40,160},100}
-    ,{{160 + 40,160 + 100},80}
-    ,{{160 + 40,180 + 60 * sin(runid * 0.1)},45},
-    {200,200,200}
+    {{0,0},100}
+    ,{{0,0 + 100},80}
+    ,{{0,45 + 90 * sin(runid * 0.1)},45}
   };
-  //circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{ADD,3,4},{LEAF,1,0},{LEAF,2,0}};
-  circle_tree tree[] = {{SUB,1,2},  {LEAF,3,0},{ISEC,3,4}, 
-			{SUB,5,6},  {LEAF,0,0},{LEAF,1,0}, 
-			{LEAF,2,0},{ISEC,3,4}, {SUB,5,6},  
-			{LEAF,0,0},{LEAF,1,0}, {LEAF,2,0}};
+  
+  circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
 
-  draw_circle_system(circles,tree,image,w,w);
+  circle circles2[] = {
+    {{0,0},100},
+    {{0,0 + 100},80},
+    {{0,45 + 90 * sin(runid * 0.1)},45}
+  };
+  
+  mat3 m1 = mat3_2d_translation(90,0);
+  mat3 m3 = mat3_2d_translation(-90,0);
+  mat3 m2 = mat3_2d_rotation(runid * 0.01);
+  mat3 mt = mat3_2d_translation(200,200);
+  mt = mat3_mul(mt,m2);
+  circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{ADD,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tform(circles2,array_count(circles2),m1);
+  circle_tform(circles,array_count(circles),m3);
+  circle_tform(circles,array_count(circles),mt);
+  circle_tform(circles2,array_count(circles2),mt);
+  circ_tree a = {tree,circles};
+  circ_tree b = {tree2,circles2};
+  circ_tree * ct = sub_tree(ADD,&a,&b);
+  
+  draw_circle_system(ct->circles,ct->tree,image,w,w);
+  free(ct);
   for(int i = 0; i < w * w; i++){
     int idx2 = i * 4;
     image24[idx2] = image[i];

@@ -24,13 +24,14 @@ typedef struct _circle_tree{
 void draw_circle_system(circle * circles, circle_tree * ctree,
 			u8 * out_image, int width, int height);
 
-
 typedef struct{
   circle_tree * tree;
   circle * circles;
 }circ_tree;
 
 
+circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b);
 
-
+void circle_move(circle * c, int count, vec2 offset);
+void circle_tform(circle * c, int count, mat3 t);
 bool test_circle();
