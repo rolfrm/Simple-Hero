@@ -39,8 +39,12 @@ void _error(const char * file, int line, const char * str, ...){
 
 void run_ai(ccdispatch * dispatcher, game_state * gs);
 bool test_circle();
+void circle_sg_main();
 int main(){
+  circle_sg_main();
+  return 0;
   test_circle();
+  
   //return 0;
   player pl1 = {PLAYER, 100, 0};
   grass_leaf leaf = {GRASS, 100, 100};

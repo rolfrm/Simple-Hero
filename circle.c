@@ -141,8 +141,6 @@ circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b){
   int circlesize = sizeof(circle) * (leftleafs  + rightleafs);
   int treesize =  sizeof(circle_tree) * (1 + leftsize + rightsize);
   int totsize = sizeof(circ_tree) + circlesize + treesize;
-    
-  printf("%i %i %i\n",leftsize,rightsize,totsize);
   void * memblock = malloc(totsize);
   
   circ_tree * c = memblock;
@@ -156,10 +154,8 @@ circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b){
   memcpy(circs + leftleafs, b->circles, rightleafs * sizeof(circle));
   for(int i = 0 ; i <rightsize;i++){
     circle_tree * ct2 = tree + i + leftsize + 1;
-    if(ct2->func == LEAF){
+    if(ct2->func == LEAF)
       ct2->circle += leftleafs;
-      printf("LEAF:\n");
-    }
   }
   tree->func = fcn;
   tree->left = 1;
