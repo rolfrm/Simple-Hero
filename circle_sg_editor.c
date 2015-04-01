@@ -9,6 +9,7 @@
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
 #include "../bitguy/linmath.h"
+#include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
 #include "renderer.h"
@@ -27,6 +28,7 @@ int circle_sg_main(){
 
   logitem item1 = {"first message",0,false};
   logitem item2 = {"quit?",1,true};
+  logitem logitems[2] = {item1,item2};
 
   ccdispatch * dis = ccstart();
   

@@ -11,22 +11,21 @@
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
 #include "../bitguy/linmath.h"
+#include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
 #include "renderer.h"
-#include "circle.h"
-
-char * text = "I said goodbye to everyone and embarked on the journey.\n"\
-  "\n" \
-  "Some would say more animal than human after what had happened, but they were all conformists anyway.\n"\
- "[go fight some things] [go home]";
 
 struct _game_renderer{
   SDL_Window * window;
   SDL_Renderer * renderer;
   TTF_Font * font;
-  SDL_Texture * guy, * grass, * campfire;
   SDL_Texture * left_target, * right_target;
+
+//Caching for text rendering.
+SDL_Texture * text_textures;
+int * text_idx;
+int text_idx_count;
 };
 
 //returns NULL on fail
@@ -79,9 +78,6 @@ game_renderer * renderer_load(){
   checkRenderError();  
   game_renderer gr = {
     win,ren,font, 
-    loadTexture("guy.png",ren),
-    loadTexture("grass.png",ren),
-    loadTexture("campfire.png",ren),
     SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600),
     SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600)
   };
@@ -95,6 +91,7 @@ void renderer_unload(game_renderer * renderer){
   free (renderer);
   SDL_Quit();
 }
+
 int runid = 0;
 void renderer_render_game(game_renderer * _renderer, game_state * state){
   runid++;

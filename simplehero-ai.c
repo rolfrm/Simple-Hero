@@ -2,7 +2,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "../bitguy/bitguy.h"
+#include "../bitguy/linmath.h"
+
 #include "microthreads.h"
+#include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
 
