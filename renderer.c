@@ -107,8 +107,8 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   static   u8 * image24;
 
   if(first){
-    surf = TTF_RenderText_Blended_Wrapped(renderer.font, text, color, 600);
-    tex = SDL_CreateTextureFromSurface(renderer.renderer, surf);
+    //surf = TTF_RenderText_Blended_Wrapped(renderer.font, text, color, 600);
+    //tex = SDL_CreateTextureFromSurface(renderer.renderer, surf);
     int w = 512;
     image = malloc(w * w);
     image24 = malloc(w * w * 4);
@@ -118,32 +118,33 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   }
   
   circle circles[] = {
-    {{0,0},100}
-    ,{{0,0 + 100},80}
-    ,{{0,45 + 50 * sin(runid * 0.05)},45}
+    {{0,0 - 50},100}
+    ,{{0,0 + 50},100}
+    ,{{0,0 + 50 * sin(runid * 0.02)},15}
   };
   
-  circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
 
   circle circles2[] = {
-    {{0,0},50},
-    {{0,0 + 100},80},
-    {{0,45 + 50 * sin(runid * 0.05)},35}
+    {{0,0 - 50},100},
+    {{0,0 + 50},100},
+    {{0,0 + 50 * sin(runid * 0.02)},15}
   };
   
-  mat3 m1 = mat3_2d_translation(90,0);
-  mat3 m3 = mat3_2d_translation(-90,0);
+  mat3 m1 = mat3_2d_translation(80,0);
+  mat3 m3 = mat3_2d_translation(-80,0);
   mat3 m2 = mat3_2d_rotation(runid * 0.01);
   mat3 mt = mat3_2d_translation(200,200);
   mt = mat3_mul(mt,m2);
-  circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{ADD,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-  //circle_tform(circles2,array_count(circles2),m1);
-  //circle_tform(circles,array_count(circles),m3);
+  //circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tree tree2[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tform(circles2,array_count(circles2),m1);
+  circle_tform(circles,array_count(circles),m3);
   circle_tform(circles,array_count(circles),mt);
   circle_tform(circles2,array_count(circles2),mt);
   circ_tree a = {tree,circles};
   circ_tree b = {tree2,circles2};
-  circ_tree * ct = sub_tree(SUB,&a,&b);
+  circ_tree * ct = sub_tree(ADD,&a,&b);
   
   draw_circle_system(ct->circles,ct->tree,image,w,w);
   free(ct);
@@ -160,8 +161,8 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   SDL_RenderClear(renderer.renderer);
 
   SDL_Rect rect = {0,0,0,0};
-  SDL_QueryTexture(tex, NULL, NULL, &rect.w, &rect.h);
-  SDL_RenderCopy(renderer.renderer, tex, NULL, &rect);
+  //SDL_QueryTexture(tex, NULL, NULL, &rect.w, &rect.h);
+  //SDL_RenderCopy(renderer.renderer, tex, NULL, &rect);
 
   /// render text done
 
