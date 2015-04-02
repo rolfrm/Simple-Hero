@@ -22,10 +22,13 @@ struct _game_renderer{
   TTF_Font * font;
   SDL_Texture * left_target, * right_target;
 
-//Caching for text rendering.
-SDL_Texture * text_textures;
-int * text_idx;
-int text_idx_count;
+  //Caching for text rendering.
+  SDL_Texture * text_textures;
+  int * text_idx;
+  int text_idx_count;
+
+  // Circle render target
+  SDL_Texture * circ;
 };
 
 //returns NULL on fail
@@ -76,11 +79,15 @@ game_renderer * renderer_load(){
   glHint( GL_LINE_SMOOTH_HINT, GL_NICEST ); 
   glHint( GL_POLYGON_SMOOTH_HINT, GL_NICEST );
   checkRenderError();  
-  game_renderer gr = {
-    win,ren,font, 
-    SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600),
-    SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600)
-  };
+  
+  game_renderer gr;
+  memset(&gr,0,sizeof(game_renderer));
+  gr.window = win;
+  gr.renderer = ren;
+  gr.font = font;
+  gr.left_target = SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600);
+  gr.right_target = SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB24,SDL_TEXTUREACCESS_TARGET,600,600);
+  gr.circ = SDL_CreateTexture(ren,SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STATIC,600,600);
   checkRenderError();
   game_renderer * res = malloc(sizeof(gr));
   *res = gr;
@@ -98,25 +105,23 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   game_renderer renderer = *_renderer;
   SDL_Color color = {0,0,0,255};
   static bool first = true;
-  static SDL_Surface * surf = NULL; 
-  static SDL_Texture * tex = NULL;
-  static SDL_Texture * circ = NULL;
   SDL_Rect dst;
   int w = 512;
   static u8 * image;
   static   u8 * image24;
 
   if(first){
-    //surf = TTF_RenderText_Blended_Wrapped(renderer.font, text, color, 600);
-    //tex = SDL_CreateTextureFromSurface(renderer.renderer, surf);
     int w = 512;
     image = malloc(w * w);
     image24 = malloc(w * w * 4);
-
-    circ = SDL_CreateTexture(renderer.renderer,SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STATIC,w,w);
     first = false;
   }
   
+  game_state gstate = *state;
+  for(int i = 0; i < gstate.trees_count; i++){
+    //add rendering of trees..
+    
+  }
   circle circles[] = {
     {{0,0 - 50},100}
     ,{{0,0 + 50},100}
@@ -133,7 +138,7 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   
   mat3 m1 = mat3_2d_translation(80,0);
   mat3 m3 = mat3_2d_translation(-80,0);
-  mat3 m2 = mat3_2d_rotation(runid * 0.01);
+  mat3 m2 = mat3_2d_rotation(runid * 0.02);
   mat3 mt = mat3_2d_translation(200,200);
   mt = mat3_mul(mt,m2);
   //circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
@@ -154,7 +159,7 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
     image24[idx2 + 1] = image[i];
     image24[idx2 + 2] = image[i];
   }
-  SDL_UpdateTexture(circ, NULL, image24, w * 4);
+  SDL_UpdateTexture(renderer.circ, NULL, image24, w * 4);
   // render text:
   SDL_SetRenderTarget(renderer.renderer,renderer.right_target);
   SDL_SetRenderDrawColor(renderer.renderer, 255, 255, 255, 255);
@@ -184,8 +189,8 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   SDL_QueryTexture(renderer.right_target, NULL, NULL, &dst.w, &dst.h);
   SDL_RenderCopy(renderer.renderer, renderer.right_target,NULL,&dst);
 
-  SDL_QueryTexture(circ, NULL, NULL, &rect.w, &rect.h);
-  SDL_RenderCopy(renderer.renderer, circ, NULL, &rect);
+  SDL_QueryTexture(renderer.circ, NULL, NULL, &rect.w, &rect.h);
+  SDL_RenderCopy(renderer.renderer, renderer.circ, NULL, &rect);
   SDL_RenderPresent(renderer.renderer);
   checkRenderError();
   
