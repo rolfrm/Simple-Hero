@@ -17,8 +17,16 @@ extern bool faulty;
 
 void run_ai(ccdispatch * dispatcher, game_state * gs);
 bool test_circle();
+
+bool test_util_hash_table();
+
 int circle_sg_main(){
   test_circle();
+  if(!test_util_hash_table()){
+    printf("ERROR\n");
+    return -1;
+  }
+  return 0;
   game_state state;
   state.items = malloc(sizeof(game_obj) * 0);
   state.is_running = true;
