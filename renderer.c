@@ -99,67 +99,11 @@ void renderer_unload(game_renderer * renderer){
   SDL_Quit();
 }
 
-int runid = 0;
 void renderer_render_game(game_renderer * _renderer, game_state * state){
-  runid++;
   game_renderer renderer = *_renderer;
   SDL_Color color = {0,0,0,255};
-  static bool first = true;
   SDL_Rect dst;
-  int w = 512;
-  static u8 * image;
-  static   u8 * image24;
 
-  if(first){
-    int w = 512;
-    image = malloc(w * w);
-    image24 = malloc(w * w * 4);
-    first = false;
-  }
-  
-  game_state gstate = *state;
-  for(int i = 0; i < gstate.trees_count; i++){
-    //add rendering of trees..
-    
-  }
-  circle circles[] = {
-    {{0,0 - 50},100}
-    ,{{0,0 + 50},100}
-    ,{{0,0 + 50 * sin(runid * 0.02)},15}
-  };
-  
-  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-
-  circle circles2[] = {
-    {{0,0 - 50},100},
-    {{0,0 + 50},100},
-    {{0,0 + 50 * sin(runid * 0.02)},15}
-  };
-  
-  mat3 m1 = mat3_2d_translation(80,0);
-  mat3 m3 = mat3_2d_translation(-80,0);
-  mat3 m2 = mat3_2d_rotation(runid * 0.02);
-  mat3 mt = mat3_2d_translation(200,200);
-  mt = mat3_mul(mt,m2);
-  //circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-  circle_tree tree2[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-  circle_tform(circles2,array_count(circles2),m1);
-  circle_tform(circles,array_count(circles),m3);
-  circle_tform(circles,array_count(circles),mt);
-  circle_tform(circles2,array_count(circles2),mt);
-  circ_tree a = {tree,circles};
-  circ_tree b = {tree2,circles2};
-  circ_tree * ct = sub_tree(ADD,&a,&b);
-  
-  draw_circle_system(ct->circles,ct->tree,image,w,w);
-  free(ct);
-  for(int i = 0; i < w * w; i++){
-    int idx2 = i * 4;
-    image24[idx2] = image[i];
-    image24[idx2 + 1] = image[i];
-    image24[idx2 + 2] = image[i];
-  }
-  SDL_UpdateTexture(renderer.circ, NULL, image24, w * 4);
   // render text:
   SDL_SetRenderTarget(renderer.renderer,renderer.right_target);
   SDL_SetRenderDrawColor(renderer.renderer, 255, 255, 255, 255);
@@ -189,8 +133,30 @@ void renderer_render_game(game_renderer * _renderer, game_state * state){
   SDL_QueryTexture(renderer.right_target, NULL, NULL, &dst.w, &dst.h);
   SDL_RenderCopy(renderer.renderer, renderer.right_target,NULL,&dst);
 
-  SDL_QueryTexture(renderer.circ, NULL, NULL, &rect.w, &rect.h);
-  SDL_RenderCopy(renderer.renderer, renderer.circ, NULL, &rect);
+  game_state gstate = *state;
+
+  SDL_QueryTexture(renderer.circ, NULL, NULL, &rect.w, &rect.h);    
+  u8 * image = malloc(rect.w * rect.h);
+  u8 * image24 = malloc(rect.w * rect.h * 4);
+   
+  for(int i = 0; i < gstate.trees_count; i++){
+    draw_circle_system(gstate.trees[i].circles,gstate.trees[i].tree,image,rect.w,rect.h);
+    int cnt = rect.w * rect.h;
+    for(int i = 0; i < cnt; i++){
+      int idx2 = i * 4;
+      image24[idx2] = image[i];
+      image24[idx2 + 1] = image[i];
+      image24[idx2 + 2] = image[i];
+    }
+    SDL_QueryTexture(renderer.circ, NULL, NULL, &rect.w, &rect.h);    
+    
+    SDL_UpdateTexture(renderer.circ, NULL, image24, rect.w * 4);
+    SDL_RenderCopy(renderer.renderer, renderer.circ, NULL, &rect);
+  }
+  free(image);
+  free(image24);
+
+
   SDL_RenderPresent(renderer.renderer);
   checkRenderError();
   
