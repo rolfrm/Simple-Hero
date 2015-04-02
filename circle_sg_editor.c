@@ -24,9 +24,9 @@ int circle_sg_main(){
   test_circle();
   if(!test_util_hash_table()){
     printf("ERROR\n");
-    return -1;
+    //return -1;
   }
-  return 0;
+  //return 0;
   game_state state;
   state.items = malloc(sizeof(game_obj) * 0);
   state.is_running = true;
@@ -35,6 +35,9 @@ int circle_sg_main(){
   logitem item1 = {"first message",0,false};
   logitem item2 = {"quit?",1,true};
   logitem logitems[2] = {item1,item2};
+  
+  state.logitems = logitems;
+  state.logitem_count = array_count(logitems);
 
   ccdispatch * dis = ccstart();
   

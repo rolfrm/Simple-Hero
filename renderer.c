@@ -30,9 +30,7 @@ struct _game_renderer{
   SDL_Texture * left_target, * right_target;
 
   //Caching for text rendering.
-  SDL_Texture * text_textures;
-  int * text_idx;
-  int text_idx_count;
+  hash_table * texts;
 
   // Circle render target
   SDL_Texture * circ;
@@ -67,6 +65,7 @@ game_renderer * renderer_load(){
   checkRenderError();
   game_renderer * res = malloc(sizeof(gr));
   *res = gr;
+  res->texts = ht_create(1024,sizeof(i32),sizeof(id_text_tuple));
   return res;
 }
 
@@ -77,7 +76,6 @@ void renderer_unload(game_renderer * renderer){
 
 void renderer_render_game(game_renderer * renderer, game_state * state){
 
-  SDL_Color color = {0,0,0,255};
   SDL_Rect dst;
 
   // render text:
@@ -87,14 +85,23 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
 
   SDL_Rect rect = {0,0,0,0};
   for(int i = 0; i < state->logitem_count; i++){
-    int j = 0;
-    for(; j < renderer->text_idx_count; j++){
-      if(renderer->text_idx[j] == state->logitems[i].id)
-	break;
+    id_text_tuple * tp = ht_lookup(renderer->texts,&state->logitems[i].id);
+    if(tp == NULL){
+      id_text_tuple new_item;
+      new_item.id = state->logitems[i].id;
+      SDL_Surface * texsurf = TTF_RenderText_Blended_Wrapped(renderer->font, state->logitems[i].text, (SDL_Color){0,0,0,1}, 100);
+      ht_insert(renderer->texts, &state->logitems[i].id,&new_item);
+      tp = ht_lookup(renderer->texts,&state->logitems[i].id);
+      printf("tp: %i\n",tp);
     }
-    if(j == renderer->text_idx_count){
+
+    //for(; j < renderer->text_idx_count; j++){
+    //  if(renderer->text_idx[j] == state->logitems[i].id)
+    //	break;
+    //}
+    //if(j == renderer->text_idx_count){
       //create a new texture with the text..
-    }
+    //}
   }
 
   
