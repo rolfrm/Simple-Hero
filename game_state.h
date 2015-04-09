@@ -18,5 +18,6 @@ typedef struct _game_state{
 
   circ_tree * trees;
   int trees_count;
-
+  
+  int selected_idx;
 }game_state;

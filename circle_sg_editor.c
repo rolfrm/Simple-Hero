@@ -32,12 +32,15 @@ int circle_sg_main(){
   state.is_running = true;
   state.item_count = 0;
 
-  logitem item1 = {"first message",0,false};
-  logitem item2 = {"quit?",1,true};
-  logitem logitems[2] = {item1,item2};
+  logitem item1 = {"first aaaaaaaaaaaaa hmmmm what now?",0,false};
+  logitem item2 = {"[quit?]",1,true};
+  logitem item3 = {"[really quit?]",2,true};
+  logitem logitems[] = { item1, item2, item3};
   
   state.logitems = logitems;
   state.logitem_count = array_count(logitems);
+
+  state.selected_idx = 1;
 
   ccdispatch * dis = ccstart();
   
@@ -50,7 +53,7 @@ int circle_sg_main(){
     ,{{0,0 + 50},15}
   };
   
-  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{ISEC,1,2},{LEAF,1,0},{LEAF,2,0}}; 
 
   circle circles2[] = {
     {{0,0 - 50},100},
@@ -64,7 +67,7 @@ int circle_sg_main(){
   mat3 mt = mat3_2d_translation(200,200);
   mt = mat3_mul(mt,m2);
   //circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-  circle_tree tree2[] = {{ISEC,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tree tree2[] = {{ISEC,1,2},{LEAF,0,0},{ISEC,1,2},{LEAF,1,0},{LEAF,2,0}}; 
   circle_tform(circles2,array_count(circles2),m1);
   circle_tform(circles,array_count(circles),m3);
   circle_tform(circles,array_count(circles),mt);

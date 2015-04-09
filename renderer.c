@@ -84,28 +84,50 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   SDL_RenderClear(renderer->renderer);
 
   SDL_Rect rect = {0,0,0,0};
+  int offsety = 0;
+
   for(int i = 0; i < state->logitem_count; i++){
     id_text_tuple * tp = ht_lookup(renderer->texts,&state->logitems[i].id);
     if(tp == NULL){
       id_text_tuple new_item;
       new_item.id = state->logitems[i].id;
-      SDL_Surface * texsurf = TTF_RenderText_Blended_Wrapped(renderer->font, state->logitems[i].text, (SDL_Color){0,0,0,1}, 100);
+      SDL_Surface * texsurf = TTF_RenderText_Blended_Wrapped(renderer->font, state->logitems[i].text, (SDL_Color){0,0,0,1}, 200);
+      new_item.text = SDL_CreateTextureFromSurface(renderer->renderer, texsurf);
       ht_insert(renderer->texts, &state->logitems[i].id,&new_item);
-      tp = ht_lookup(renderer->texts,&state->logitems[i].id);
-      printf("tp: %i\n",tp);
     }
+  }
 
-    //for(; j < renderer->text_idx_count; j++){
-    //  if(renderer->text_idx[j] == state->logitems[i].id)
-    //	break;
-    //}
-    //if(j == renderer->text_idx_count){
-      //create a new texture with the text..
-    //}
+  int option_idx = 0;
+  int option_cnt = 1;
+  
+  for(int i = 0; i < state->logitem_count; i++){
+    if(state->logitems[i].is_option){
+      option_cnt++;
+    }else{
+      option_idx = i + 1;
+      option_cnt = 1;
+    }
+  }
+
+  for(int i = 0; i < state->logitem_count; i++){
+    id_text_tuple * tp = ht_lookup(renderer->texts,&state->logitems[i].id);
+    SDL_QueryTexture(tp->text, NULL, NULL, &rect.w, &rect.h);
+    rect.x = 0;
+    rect.y = offsety;
+    if(state->logitems[i].is_option && i >= option_idx){
+      SDL_SetRenderDrawColor(renderer->renderer, 255, 255, 255, 255);
+      rectangleColor(renderer->renderer,rect.x,rect.y,rect.x + rect.w, rect.y + rect.h,0xFF000000);
+      if(state->selected_idx == (i - option_idx)){
+	boxColor(renderer->renderer,rect.x,rect.y,rect.x + rect.w, rect.y + rect.h,0xFFFFFF00);
+      }
+    }
+    
+    SDL_RenderCopy(renderer->renderer, tp->text, NULL, &rect);
+    offsety += rect.h + 10;
   }
 
   
-  //SDL_RenderCopy(renderer->renderer, tex, NULL, &rect);
+  //
 
   /// render text done
 
