@@ -17,7 +17,7 @@
 #include "renderer.h"
 #include "sdl_utils.h"
 #include "uivector.h"
-
+#include "event.h"
 typedef struct {
   int id;
   SDL_Texture * text;
@@ -72,6 +72,21 @@ game_renderer * renderer_load(){
 void renderer_unload(game_renderer * renderer){
   free (renderer);
   SDL_Quit();
+}
+
+event sdl_event_to_event(SDL_Event sdlevt){
+  event evt;
+  switch(sdlevt.type){
+  case SDL_KEYDOWN:
+    evt.type = KEY;
+    evt.key.type = KEYDOWN;
+    printf("key: %i\n",sdlevt.key.keysym.sym);
+    printf("key2: %i %i\n",KEY_b, 'b');
+    break;
+  default:
+    evt.type = UNKNOWN;
+  }
+  return evt;
 }
 
 void renderer_render_game(game_renderer * renderer, game_state * state){
@@ -180,8 +195,10 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   while(wait){
     wait = false;
     while(SDL_PollEvent(&evt)){
+      event evt2 = sdl_event_to_event(evt);
       switch(evt.type){
       case SDL_KEYDOWN:
+	//printf(evt2.key
 	if(evt.key.keysym.sym == SDLK_ESCAPE)
 	  state->is_running = false;
 	wait = false;
