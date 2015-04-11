@@ -1,3 +1,10 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+
+#include "../bitguy/bitguy.h"
+#include "../bitguy/utils.h"
+
 #include "event.h"
 keysym_descr keysym_descrs[] = 
   { {KEY_BACKSPACE,'\b',"backspace"},
@@ -71,16 +78,16 @@ keysym_descr keysym_descrs[] =
     {KEY_y,'y',"y"},
     {KEY_z,'z',"z"},
     {KEY_DELETE,'^?',"delete"},
-    {KEY_KP0,'#',"keypad 0"},
-    {KEY_KP1,'#',"keypad 1"},
-    {KEY_KP2,'#',"keypad 2"},
-    {KEY_KP3,'#',"keypad 3"},
-    {KEY_KP4,'#',"keypad 4"},
-    {KEY_KP5,'#',"keypad 5"},
-    {KEY_KP6,'#',"keypad 6"},
-    {KEY_KP7,'#',"keypad 7"},
-    {KEY_KP8,'#',"keypad 8"},
-    {KEY_KP9,'#',"keypad 9"},
+    //{KEY_KP0,'#',"keypad 0"},
+    //{KEY_KP1,'#',"keypad 1"},
+    //{KEY_KP2,'#',"keypad 2"},
+    //{KEY_KP3,'#',"keypad 3"},
+    //{KEY_KP4,'#',"keypad 4"},
+    //{KEY_KP5,'#',"keypad 5"},
+    //{KEY_KP6,'#',"keypad 6"},
+    //{KEY_KP7,'#',"keypad 7"},
+    //{KEY_KP8,'#',"keypad 8"},
+    //{KEY_KP9,'#',"keypad 9"},
     {KEY_KP_PERIOD,'.',"keypad period"},
     {KEY_KP_DIVIDE,'/',"keypad divide"},
     {KEY_KP_MULTIPLY,'*',"keypad multiply"},
@@ -121,10 +128,10 @@ keysym_descr keysym_descrs[] =
     {KEY_LCTRL,'#',"left ctrl"},
     {KEY_RALT,'#',"right alt"},
     {KEY_LALT,'#',"left alt"},
-    {KEY_RMETA,'#',"right meta"},
-    {KEY_LMETA,'#',"left meta"},
-    {KEY_LSUPER,'#',"left windows key"},
-    {KEY_RSUPER,'#',"right windows key"},
+    //{KEY_RMETA,'#',"right meta"},
+    //{KEY_LMETA,'#',"left meta"},
+    //{KEY_LSUPER,'#',"left windows key"},
+    //{KEY_RSUPER,'#',"right windows key"},
     {KEY_MODE,'#',"mode shift"},
     {KEY_HELP,'#',"help"},
     {KEY_PRINT,'#',"print-screen"},

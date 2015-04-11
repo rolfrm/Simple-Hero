@@ -170,7 +170,7 @@ typedef enum{
 
 typedef struct{
   key_event_type type;
-  int keysym;
+  keysym sym;
 }key_event;
 
 
