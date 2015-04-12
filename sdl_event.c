@@ -195,6 +195,19 @@ event sdl_event_to_event(SDL_Event sdlevt){
     evt.mouse_button.button = b8;
     evt.mouse_button.state = button_state;
     break;
+  case SDL_JOYAXISMOTION:
+    evt.type = JOY_AXIS;
+    evt.joy_axis.joystick_id = sdlevt.jaxis.which;
+    evt.joy_axis.axis = sdlevt.jaxis.axis;
+    evt.joy_axis.value = (double)sdlevt.jaxis.value / 32768.0;
+    break;
+  case SDL_JOYBUTTONDOWN:
+    button_state = BUTTON_DOWN;
+  case SDL_JOYBUTTONUP:
+    evt.type = JOY_BUTTON;
+    evt.joy_button.state = button_state;
+    evt.joy_button.button = sdlevt.jbutton.button;
+    evt.joy_button.joystick_id = sdlevt.jaxis.which;
   case SDL_QUIT:
     evt.type = QUIT;
     break;

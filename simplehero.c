@@ -10,6 +10,7 @@
 #include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
+#include "event.h"
 #include "renderer.h"
 #include <stdarg.h>
 

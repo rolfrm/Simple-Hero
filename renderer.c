@@ -14,10 +14,11 @@
 #include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
+#include "event.h"
+
 #include "renderer.h"
 #include "sdl_utils.h"
 #include "uivector.h"
-#include "event.h"
 #include "sdl_event.h"
 typedef struct {
   int id;
@@ -175,28 +176,18 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   SDL_RenderPresent(renderer->renderer);
   checkRenderError();
   
-  SDL_Event evt;
-  bool wait = true;
-  
-  while(wait){
-    wait = false;
-    while(SDL_PollEvent(&evt)){
-      event evt2 = sdl_event_to_event(evt);
-      switch(evt.type){
-      case SDL_KEYDOWN:
-	//printf(evt2.key
-	//if(evt.key.keysym.sym == SDLK_ESAPE)
-	//  state->is_running = false;
-	wait = false;
-	break;
-	
-      case SDL_QUIT:
+  SDL_Event evt; 
+}
 
-	state->is_running = false;
-      case SDL_MOUSEBUTTONDOWN:
-	break;
-      }
+u32 renderer_read_events(event * buffer, u32 count){
+  SDL_Event evt; 
+  u32 cnt = 0;
+  for(; cnt<count;cnt++){
+    if(SDL_PollEvent(&evt)){
+      buffer[cnt] = sdl_event_to_event(evt);
+    }else{
+      return cnt;
     }
   }
-
+  return cnt;
 }

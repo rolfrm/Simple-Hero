@@ -10,7 +10,9 @@
 #include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
+#include "event.h"
 #include "renderer.h"
+
 #include <stdarg.h>
 
 extern bool faulty;
@@ -81,7 +83,17 @@ int circle_sg_main(){
 
   while(state.is_running){
     usleep(10000);
-    renderer_render_game(renderer,&state);      
+    renderer_render_game(renderer,&state);
+    event evt;      
+    while(renderer_read_events(&evt,1)){
+      switch(evt.type){
+      case QUIT:
+	state.is_running = false;
+	printf("Quit pls!\n");
+      default:
+	break;
+      }
+    }
     if(faulty)break;
   }
   free(ct);  

@@ -6,6 +6,8 @@ typedef enum{
   JOY_AXIS,
   JOY_BALL,
   JOY_HAT,
+  JOY_BUTTON,
+  JOY_DEVICE,
   QUIT,
   UNKNOWN
 }event_type;
@@ -178,7 +180,6 @@ typedef struct{
   keysym sym;
 }key_event;
 
-
 typedef struct{
   keysym sym;
   char charcode;
@@ -188,6 +189,19 @@ typedef struct{
 keysym_descr keysym_descr_from_keysym(keysym sym);
 
 typedef struct{
+  int joystick_id;
+  u8 axis;
+  double value;
+
+}joy_axis_event;
+
+typedef struct{
+  int joystick_id;
+  u8 button;
+  button_state state;
+}joy_button_event;
+
+typedef struct{
   event_type type;
   u32 id;
   u32 timestamp;
@@ -195,6 +209,8 @@ typedef struct{
     key_event key;
     mouse_motion_event mouse_motion;
     mouse_button_event mouse_button;
+    joy_axis_event joy_axis;
+    joy_button_event joy_button;
   };
 
 }event;
