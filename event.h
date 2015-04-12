@@ -2,6 +2,7 @@ typedef enum{
   KEY,
   MOUSE_MOTION,
   MOUSE_BUTTON,
+  MOUSE_WHEEL,
   JOY_AXIS,
   JOY_BALL,
   JOY_HAT,
@@ -18,14 +19,18 @@ typedef struct{
 typedef enum{
   LEFT,
   RIGHT,
-  MIDDLE
-  
+  MIDDLE  
 }mouse_button;
+
+typedef enum{
+  BUTTON_DOWN,
+  BUTTON_UP
+}button_state;
 
 typedef struct{
   mouse_button button;
+  button_state state;
 }mouse_button_event;
-
 
 typedef enum{
   KEY_BACKSPACE,
@@ -184,6 +189,8 @@ keysym_descr keysym_descr_from_keysym(keysym sym);
 
 typedef struct{
   event_type type;
+  u32 id;
+  u32 timestamp;
   union{
     key_event key;
     mouse_motion_event mouse_motion;
