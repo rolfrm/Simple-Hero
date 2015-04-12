@@ -22,6 +22,20 @@ bool test_circle();
 
 bool test_util_hash_table();
 
+int get_logoption_cnt(logitem * items, int count){
+  for(int i = 0; i < count; i++)
+    if(items[count - i - 1].is_option == false)
+      return i;
+  return -1;
+}
+
+logitem * get_logoption(logitem * items, size_t count, int idx){
+  int optcnt = get_logoption_cnt(items, count);
+  if(idx >= optcnt || idx < 0)
+    return NULL;
+  return items + (count - 1 - idx);
+}
+
 int circle_sg_main(){
   test_circle();
   if(!test_util_hash_table()){
@@ -34,10 +48,19 @@ int circle_sg_main(){
   state.is_running = true;
   state.item_count = 0;
 
+  void quitfcn (){
+    state.is_running = false;
+    printf("qqquiiit!\n");
+  }
+  void printhi(){
+    printf("hi..\n");
+  }
+
   logitem item1 = {"first aaaaaaaaaaaaa hmmmm what now?",0,false};
-  logitem item2 = {"[quit?]",1,true};
-  logitem item3 = {"[really quit?]",2,true};
-  logitem logitems[] = { item1, item2, item3};
+  logitem item2 = {"[quit?]",1,true, quitfcn};
+  logitem item3 = {"[really quit?]",2,true, printhi};
+  logitem item4 = {"[really really quit?]",3,true, printhi};
+  logitem logitems[] = { item1, item2, item3, item4};
   
   state.logitems = logitems;
   state.logitem_count = array_count(logitems);
@@ -90,6 +113,24 @@ int circle_sg_main(){
       case QUIT:
 	state.is_running = false;
 	printf("Quit pls!\n");
+      case KEY:
+	if(evt.key.type == KEYDOWN){
+	  switch(evt.key.sym){
+	  case KEY_UP:
+	    state.selected_idx++;
+	    break;
+	  case KEY_DOWN:
+	    state.selected_idx--;
+	    break;
+	  case KEY_RETURN:
+	    printf("Enter!\n");
+	    logitem * itm = get_logoption(logitems,array_count(logitems),state.selected_idx);
+	    if(itm != NULL) itm->cb(NULL);
+	    break;
+	  default:
+	    break;
+	  }
+	}
       default:
 	break;
       }

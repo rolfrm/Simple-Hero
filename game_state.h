@@ -5,6 +5,7 @@ typedef struct {
   char * text;
   int id;
   bool is_option;
+  void (* cb) (void * ptr);
 }logitem;
 
 typedef struct _game_state{
