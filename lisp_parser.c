@@ -27,17 +27,24 @@ char * parse_keyword(char * code, value_expr * kw){
   if(code[0] != ':')
     return NULL;
   char * end = take_while(code, &is_keyword_char);
-  
+  if(!is_endexpr(*end)){
+    return NULL;
+  }
+  kw->type = KEYWORD;
+  kw->value = code;
+  kw->strln = end - code;
+  return code;
 }
 
 char * parse_symbol(char * code, value_expr * sym){
   char * end = take_while(code,is_keyword_char);
   if(end == code)
     return NULL;
-  sym->value = code;
-  sym->strln = end - code;
   if(!is_endexpr(*end))
     return NULL;
+  sym->value = code;
+  sym->strln = end - code;
+  sym->type = SYMBOL;
   return end;
 }
 char * read_to_end_of_string(char * code){
@@ -60,6 +67,7 @@ char * parse_string(char * code, value_expr * string){
   char * end = read_to_end_of_string(code);
   string->value = code + 1;
   string->strln = end - code;
+  string->type = STRING;
   return end;
 }
 
@@ -153,13 +161,15 @@ void delete_expression(expression * expr){
 }
 
 expression * lisp_parse(char * code){
+  printf("parsing..\n");
   expression out_exprs[10];
   char * c2 = take_while(code, is_whitespace);
   expression out_expr;
   char * nc = parse_expression(code, &out_expr);
+  printf("out_expr: %i\n",out_expr.sub_expression.sub_expressions[0].value.strln);
   return NULL;
 }
 
 void main(){
-  lisp_parse("(hej 1.0)");
+  lisp_parse("(hej 1.0312)");
 }

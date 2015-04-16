@@ -1,6 +1,6 @@
 typedef enum{
-  EXPRESSION,
-  VALUE
+  EXPRESSION = 5,
+  VALUE = 6
 }expr_type;
 
 typedef enum{
