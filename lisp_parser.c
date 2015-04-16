@@ -1,7 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "lisp_parser.h"
+
+#include <stdio.h>
+
 char * take_while(char * data, bool (* fcn)(char char_code)){
   while(fcn(data[0])) data++;
   return data;
@@ -26,6 +30,7 @@ bool is_endexpr(char c){
 char * parse_keyword(char * code, value_expr * kw){
   if(code[0] != ':')
     return NULL;
+  code++;
   char * end = take_while(code, &is_keyword_char);
   if(!is_endexpr(*end)){
     return NULL;
@@ -33,7 +38,7 @@ char * parse_keyword(char * code, value_expr * kw){
   kw->type = KEYWORD;
   kw->value = code;
   kw->strln = end - code;
-  return code;
+  return end;
 }
 
 char * parse_symbol(char * code, value_expr * sym){
@@ -65,8 +70,8 @@ char * parse_string(char * code, value_expr * string){
   if(*code != '"') return NULL;
   code++;
   char * end = read_to_end_of_string(code);
-  string->value = code + 1;
-  string->strln = end - code;
+  string->value = code;
+  string->strln = end - code - 1; //-1: last "
   string->type = STRING;
   return end;
 }
@@ -84,7 +89,7 @@ char * parse_number(char * code, value_expr * string){
     }
   }
   string->value = code;
-  string->type = STRING;
+  string->type = NUMBER;
   string->strln = it - code;
   return it;
 }
@@ -122,7 +127,8 @@ char * parse_subexpression(char * code, sub_expression_expr * subexpr){
     subexpr->sub_expression_count = len;
     subexpr->sub_expressions = malloc(len * sizeof(expression));
     memcpy(subexpr->sub_expressions, exprs, len * sizeof(expression));
-    return code;  
+    
+    return code + 1;  
   }
   code = parse_expression(code, exprs + len);
   if(code == NULL)
@@ -160,16 +166,43 @@ void delete_expression(expression * expr){
   
 }
 
+void print_expression(expression * expr){
+    value_expr value = expr->value;
+    sub_expression_expr subexpr = expr->sub_expression;
+    
+  switch(expr->type){
+  case EXPRESSION:
+    printf("name: %.*s \n", value.strln, subexpr.name.value);
+    for(int i = 0 ; i < subexpr.sub_expression_count; i++){
+      print_expression(subexpr.sub_expressions + i);
+    }
+    break;
+  case VALUE:
+    printf("Value: %i %.*s\n",value.type, value.strln,value.value);
+    break;
+  }
+}
+
+
 expression * lisp_parse(char * code){
-  printf("parsing..\n");
   expression out_exprs[10];
-  char * c2 = take_while(code, is_whitespace);
-  expression out_expr;
-  char * nc = parse_expression(code, &out_expr);
-  printf("out_expr: %i\n",out_expr.sub_expression.sub_expressions[0].value.strln);
+  
+  for(int i = 0 ; i < 10; i++){
+    code = take_while(code, is_whitespace);
+    char * cn = parse_expression(code, out_exprs + i);
+    printf("parse.. %s\n", code);
+    if(cn == NULL){
+      return NULL;
+    }
+    print_expression(out_exprs + i);
+
+    code = cn;
+    if(*code == 0) return NULL;
+  }
   return NULL;
 }
 
-void main(){
-  lisp_parse("(hej 1.0312)");
+int main(){
+  lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)");
+  return 0;
 }

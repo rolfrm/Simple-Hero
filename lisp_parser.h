@@ -5,15 +5,15 @@ typedef enum{
 
 typedef enum{
   // All numbers.
-  NUMBER,
+  NUMBER = 1,
   // things starting with ':'
-  KEYWORD,
+  KEYWORD = 2,
   // "-delimited strings
-  STRING,
+  STRING = 3,
   // Comments are ignored by the compiler
-  COMMENT,
+  COMMENT = 4,
   // Symbols are used first in functions.
-  SYMBOL
+  SYMBOL = 5
 }value_type;
 
 typedef struct{
