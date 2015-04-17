@@ -184,10 +184,8 @@ void print_expression(expression * expr){
 }
 
 
-expression * lisp_parse(char * code){
-  expression out_exprs[10];
-  
-  for(int i = 0 ; i < 10; i++){
+char * lisp_parse(char * code, expression * out_exprs, int out_exprs_count){
+  for(int i = 0 ; i < out_exprs_count; i++){
     code = take_while(code, is_whitespace);
     char * cn = parse_expression(code, out_exprs + i);
     printf("parse.. %s\n", code);
@@ -197,9 +195,9 @@ expression * lisp_parse(char * code){
     print_expression(out_exprs + i);
 
     code = cn;
-    if(*code == 0) return NULL;
+    if(*code == 0) return code;
   }
-  return NULL;
+  return code;
 }
 
 int main(){
