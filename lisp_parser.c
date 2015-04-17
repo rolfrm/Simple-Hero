@@ -20,7 +20,7 @@ bool is_keyword_char(char c){
 }
 
 bool is_whitespace(char c){
-  return isspace(c);
+  return (bool)isspace(c);
 }
 
 bool is_endexpr(char c){
@@ -37,7 +37,7 @@ char * parse_keyword(char * code, value_expr * kw){
   }
   kw->type = KEYWORD;
   kw->value = code;
-  kw->strln = end - code;
+  kw->strln = (int) (end - code);
   return end;
 }
 
@@ -48,7 +48,7 @@ char * parse_symbol(char * code, value_expr * sym){
   if(!is_endexpr(*end))
     return NULL;
   sym->value = code;
-  sym->strln = end - code;
+  sym->strln = (int) (end - code);
   sym->type = SYMBOL;
   return end;
 }
@@ -71,7 +71,7 @@ char * parse_string(char * code, value_expr * string){
   code++;
   char * end = read_to_end_of_string(code);
   string->value = code;
-  string->strln = end - code - 1; //-1: last "
+  string->strln = (int) (end - code - 1); //-1: last "
   string->type = STRING;
   return end;
 }
@@ -90,7 +90,7 @@ char * parse_number(char * code, value_expr * string){
   }
   string->value = code;
   string->type = NUMBER;
-  string->strln = it - code;
+  string->strln = (int)(it - code);
   return it;
 }
 
@@ -127,7 +127,7 @@ char * parse_subexpression(char * code, sub_expression_expr * subexpr){
     subexpr->sub_expression_count = len;
     subexpr->sub_expressions = malloc(len * sizeof(expression));
     memcpy(subexpr->sub_expressions, exprs, len * sizeof(expression));
-    
+
     return code + 1;  
   }
   code = parse_expression(code, exprs + len);
@@ -184,23 +184,30 @@ void print_expression(expression * expr){
 }
 
 
-char * lisp_parse(char * code, expression * out_exprs, int out_exprs_count){
-  for(int i = 0 ; i < out_exprs_count; i++){
+char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count){
+  for(int i = 0 ; i < *out_exprs_count; i++){
     code = take_while(code, is_whitespace);
     char * cn = parse_expression(code, out_exprs + i);
-    printf("parse.. %s\n", code);
     if(cn == NULL){
+      *out_exprs_count = i;
       return NULL;
     }
     print_expression(out_exprs + i);
 
     code = cn;
-    if(*code == 0) return code;
+    if(*code == 0) {
+      *out_exprs_count = i + 1;
+      return code;
+    }
   }
   return code;
 }
 
-int main(){
-  lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)");
+int test_lisp_parser(){
+  expression exprs[10];
+  int exprs_count = 10;
+  char * end = lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
+  for(int i = 0; i < exprs_count; i++)
+    print_expression(exprs + i);
   return 0;
 }

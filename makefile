@@ -1,5 +1,5 @@
 OPT = -g
-SOURCES = circle_sg_editor.c simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c
+SOURCES = circle_sg_editor.c simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c
 CC = gcc
 TARGET = run
 OBJECTS =$(SOURCES:.c=.o)

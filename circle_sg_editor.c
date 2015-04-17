@@ -12,7 +12,7 @@
 #include "game_state.h"
 #include "event.h"
 #include "renderer.h"
-
+#include "lisp_parser.h"
 #include <stdarg.h>
 
 extern bool faulty;
@@ -37,6 +37,7 @@ logitem * get_logoption(logitem * items, size_t count, int idx){
 }
 
 int circle_sg_main(){
+  //return test_lisp_parser();
   test_circle();
   if(!test_util_hash_table()){
     printf("ERROR\n");

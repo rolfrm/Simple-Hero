@@ -38,4 +38,6 @@ struct _expression{
   };
 };
 
-expression * lisp_parse(char * code);
+char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count);
+
+int test_lisp_parser();
