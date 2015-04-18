@@ -58,7 +58,22 @@ bool vexprcmpstr(value_expr val, const char * str){
   }
   return false;
 }
-  
+
+	  
+typedef struct{
+  union{
+    u8 data[4];
+    u8 r,g,b,a;
+    int color;
+  };
+}color;
+
+typedef struct{
+  char * id;
+  color color;
+  circle circle;
+  bool is_scenery;
+}entity;
 	  
 typedef struct{
   int typeid;
@@ -66,54 +81,139 @@ typedef struct{
     u64 data;
     double data_double;
     char * data_str;
+    circle circle;
+    color color;
+    entity entity;
   };
 }lisp_result;
 
-void * acopy(void * data, size_t len){
-  void * out_data = malloc(len);
+char * array2str(char * data, size_t len){
+  void * out_data = malloc(len + 1);
   memcpy(out_data,data,len);
+  data[len] = 0;
   return out_data;
 }
-	  
+enum{
+  TYPEID_DOUBLE = VALUE_TYPE_LAST,
+  TYPEID_CIRCLE,
+  TYPEID_COLOR,
+  TYPEID_ENTITY,
+  TYPEID_ERROR,
+  TYPEID_TYPE_OK
+};
+
 void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
+  result->typeid = TYPEID_ERROR; // In case noone sets it.
   if(expr->type == VALUE){
     value_expr val = expr->value;
     char str[val.strln + 1];
-    memcpy(str,val.value,val.strln + 1);
+    str[val.strln] = 0;
+    memcpy(str,val.value,val.strln);
     switch(val.type){
     case NUMBER:
       result->data_double = strtod(str,NULL);
+      result->typeid = TYPEID_DOUBLE;
       break;
     case KEYWORD:
     case SYMBOL:
     case STRING:
       result->typeid = val.type;
-      result->data_str = acopy(str,val.strln + 1);
+      result->data_str = array2str(str,val.strln + 1);
       break;
     default:
       ERROR("Unsupported val type: %i", val.type);
     }
   }else if(expr->type == EXPRESSION){
+    
     sub_expression_expr sexpr = expr->sub_expression;
     value_expr name = sexpr.name;
     lisp_result results[sexpr.sub_expression_count];
     for(int i = 0; i < sexpr.sub_expression_count; i++){
       eval_expr(sexpr.sub_expressions + i, just_check_types, results + i);
+      if(results[i].typeid == TYPEID_ERROR){
+	loge("ERROR matching type at %s arg %i", name.value, i);
+      }
     }
+    
     if(vexprcmpstr(name, "circle")){
+      circle circ;
+      if(array_count(results) != 3)
+	loge("circle requires three arguments");
+      for(int i = 0; i < array_count(results); i++)
+	if(results[i].typeid != TYPEID_DOUBLE)
+	  loge("Circle only supports DOUBLE args");
+      circ.xy = (vec2){results[0].data_double, results[1].data_double, results[2].data_double};;
+      result->typeid = TYPEID_CIRCLE;
+      result->circle = circ;
+      printf("success parsing circle\n");
       
     }else if(vexprcmpstr(name, "entity")){
-      
-    }else if(vexprcmpstr(name, "from.rgb")){
+      // supports optional id. color, scenery.
+      // requires a circle
+      entity entity;
+      for(size_t i = 0; i < array_count(results); i++){
+	lisp_result r = results[i];
+	if(r.typeid == KEYWORD){
+	  if(strcmp(r.data_str, "id") == 0){
+	    i++;
+	    r = results[i];
+	    if(r.typeid != STRING)
+	      goto jmperror;
+	    
+	    entity.id = r.data_str;
+	  }else if(strcmp(r.data_str, "color") == 0){
+	    
+	    i++;
+	    r = results[i];
+	    if(r.typeid != TYPEID_COLOR)
+	      goto jmperror;
+	    entity.color = r.color;
+	  }else if(strcmp(r.data_str, "scenery") == 0){
+	    i++;
+	    r = results[i];
+	    if(r.typeid != TYPEID_DOUBLE)
+	      goto jmperror;
+	    int v = (int)r.data_double;
+	    entity.is_scenery = (bool)v;
+	  
+	  }else{
+	    goto jmperror;
+	  }
+	}else if(r.typeid == TYPEID_CIRCLE){
+	  entity.circle = r.circle;
+	}else{
 
-    }else if(vexprcmpstr(name, "color")){
+	  goto jmperror;
+	}
+      }
+      result->typeid = TYPEID_ENTITY;
+      result->entity = entity;
+      printf("success parsing entity\n");
+    }else if(vexprcmpstr(name, "from.rgb")){
+      if(array_count(results) != 3)
+	goto jmperror;
+      color color;
+      for(int i = 0; i < 3; i++){
+	if(results[i].typeid != TYPEID_DOUBLE)
+	  goto jmperror;
+	color.data[i] = results[i].data_double;
+      }
+      result->typeid = TYPEID_COLOR;
+      result->color = color;
+      printf("success parsing color\n");
     }else{
-      loge("Unknown function '%.*s'",name.strln,name.value);
+      loge("Unknown function '%.*s'\n",name.strln,name.value);
     }
-  }else{
+  }
+  else{
     ERROR("Unsupported action ");
   }
+  return;
+ jmperror:
+  result->typeid = TYPEID_ERROR;
+  loge("ERROR matching type\n");  
 }
+
 
 int circle_sg_main(){
   FILE * l1 = fopen("level1.lisp","rb");
