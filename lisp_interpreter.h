@@ -1,12 +1,5 @@
-// requires bitguy.h, circle.h, lisp_parser.h, color.h
+// requires bitguy.h, circle.h, lisp_parser.h, color.h, game_state.h
 
-typedef struct{
-  char * id;
-  color color;
-  circle circle;
-  bool is_scenery;
-}entity;
-	  
 typedef struct{
   int typeid;
   union{

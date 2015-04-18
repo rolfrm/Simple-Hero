@@ -1,3 +1,4 @@
+// requires bitguy.h
 typedef enum{
   KEY,
   MOUSE_MOTION,

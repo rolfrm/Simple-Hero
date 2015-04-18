@@ -1,6 +1,6 @@
 (entity :id "player"
-	:color (from.rgb 0 255 255)
-	(circle 180.0 150.0 10.0))
+	:color (from.rgb 160 130 130)
+	(circle 200.0 350.0 50.0))
 
 (entity :id "enemy"
 	:color (from.rgb 255 0 0)
@@ -9,7 +9,7 @@
 (entity :scenery 1
 	:id "wall"
 	:color (from.rgb 255 255 190)
-	(circle 300 300 150))
+	(circle 300 300 30))
 
 (entity :id "enemy"
 	:color (from.rgb 255 200 0)

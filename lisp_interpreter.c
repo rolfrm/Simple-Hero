@@ -8,6 +8,8 @@
 #include "../bitguy/linmath.h"
 #include "color.h"
 #include "circle.h"
+#include "game_object.h"
+#include "game_state.h"
 #include "lisp_parser.h"
 #include "lisp_interpreter.h"
 

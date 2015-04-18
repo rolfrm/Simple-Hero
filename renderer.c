@@ -157,7 +157,7 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   for(int i = 0; i < state->trees_count; i++){
     u32 basecolor = state->colors[i].color;
     memset(image,0,rect.w * rect.h);
-    draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
+    draw_circle_system(&state->entities[i].circle,state->trees[i].tree,image,rect.w,rect.h);
     
     u32 * image322 = (u8 *)image32;
     int cnt = rect.w * rect.h;
@@ -172,12 +172,12 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
   
   SDL_UpdateTexture(renderer->circ, NULL, image32, rect.w * 4);
-  SDL_RenderCopy(renderer->renderer, renderer->circ, NULL, &rect);
+  SDL_Point pt = {0,0};
+  SDL_RenderCopyEx(renderer->renderer, renderer->circ, NULL, &rect,0, &pt, SDL_FLIP_VERTICAL);
   
   free(image);
   free(image32);
   free(image_fin);
-
 
   SDL_RenderPresent(renderer->renderer);
   checkRenderError();
