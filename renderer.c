@@ -160,7 +160,6 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   for(int i = 0; i < state->trees_count; i++){
     u32 basecolor = state->colors[i].color;
     memset(image,0,rect.w * rect.h);
-    circle c = state->trees[i].circles[0];
     draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
     
     u32 * image322 = (u8 *)image32;
