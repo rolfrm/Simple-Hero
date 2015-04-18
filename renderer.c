@@ -128,10 +128,7 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
     SDL_RenderCopy(renderer->renderer, tp->text, NULL, &rect);
     offsety += rect.h + 10;
   }
-
   
-  //
-
   /// render text done
 
   // render graphics
@@ -156,7 +153,7 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   u8 * image = malloc(rect.w * rect.h);
   u8 * image_fin = malloc(rect.w * rect.h);
   u8 * image32 = malloc(rect.w * rect.h * 4);
-  memset(image_fin,0,rect.w * rect.h);
+  memset(image32,0,rect.w * rect.h * 4);
   for(int i = 0; i < state->trees_count; i++){
     u32 basecolor = state->colors[i].color;
     memset(image,0,rect.w * rect.h);

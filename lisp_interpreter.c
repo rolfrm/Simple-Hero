@@ -28,6 +28,21 @@ bool vexprcmpstr(value_expr val, const char * str){
   return false;
 }
 
+void lisp_result_delete(lisp_result * r){
+  switch(r->typeid){
+  case STRING:
+  case KEYWORD:
+  case SYMBOL:
+    free(r->data_str);
+    break;
+  case TYPEID_ENTITY:
+    free(r->entity.id);
+    break;
+  default:
+    break;
+  }
+}
+
 void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
   result->typeid = TYPEID_ERROR; // In case noone sets it.
   if(expr->type == VALUE){
