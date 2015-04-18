@@ -156,7 +156,6 @@ void ld32_main(){
     printf("hi..\n");
   }
 
-  
   game_renderer * renderer = renderer_load();
   
   game_controller gc = game_controller_blank;
@@ -191,13 +190,25 @@ void ld32_main(){
   
   load_game();
   while(state.is_running){
+    for(int i = 0 ; i < state.trees_count; i++){
+      entity * ent = state.entities + i;
 
+
+      if(strcmp(ent->id, "enemy") == 0){
+	vec2 v2 = {.data = {0.0,0.0}};
+	if(player_ent != NULL)
+	  v2 = vec2_sub(player_ent->circle.xy, ent->circle.xy);
+	v2 = vec2_normalize(v2);
+	ent->circle.xy.x += rand() % 5 - 2;
+	ent->circle.xy.y += rand() % 5 - 2;
+	ent->circle.xy = vec2_add(ent->circle.xy, vec2_scale(v2,0.33));
+      }
+    }
     usleep(10000);
     renderer_render_game(renderer,&state);
     event evt;      
     game_controller gc_old = gc;
     while(renderer_read_events(&evt,1)){
-
       switch(evt.type){
       case QUIT:
 	state.is_running = false;
@@ -221,9 +232,6 @@ void ld32_main(){
     player_ent->circle.xy.x += gc.x;
     player_ent->circle.xy.y += gc.y;
     
-
-    
-
     if(faulty)break;
   }
   //  free(ct);  
