@@ -154,8 +154,10 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
   u8 * image = malloc(rect.w * rect.h);
   u8 * image24 = malloc(rect.w * rect.h * 4);
-   
+  log("rendering trees: %i\n",state->trees_count);
   for(int i = 0; i < state->trees_count; i++){
+    circle c = state->trees[i].circles[0];
+    logd("%-2i: rendering %f %f %f\n",c.xy.x, c.xy.y, c.r);
     draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
     int cnt = rect.w * rect.h;
     for(int i = 0; i < cnt; i++){

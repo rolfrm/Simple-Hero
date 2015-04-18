@@ -176,6 +176,20 @@ void circle_move(circle * c, int count, vec2 xy){
   }
 }
 
+circle_tree circ_leaf(int circ_idx){
+  circle_tree out;
+  out.func = LEAF;
+  out.circle = circ_idx;
+  return out;
+}
+circle_tree circ_func(circle_func func, int left_tree, int right_tree){
+  circle_tree out;
+  out.func = func;
+  out.left =left_tree;
+  out.right = right_tree;
+  return out;
+}
+
 // testing //
 
 bool test_circle_sweep(){

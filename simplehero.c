@@ -42,8 +42,10 @@ void _error(const char * file, int line, const char * str, ...){
 void run_ai(ccdispatch * dispatcher, game_state * gs);
 bool test_circle();
 void circle_sg_main();
+void ld32_main();
 int main(){
-  circle_sg_main();
+  ld32_main();
+  //circle_sg_main();
   return 0;
   test_circle();
   

@@ -1,4 +1,4 @@
-//regures bitguy.h
+//regures bitguy.h. linmath.h
 typedef struct _circle{
   vec2 xy;
   float r;
@@ -19,6 +19,9 @@ typedef struct _circle_tree{
   //unused if func == LEAF
   int right; 
 }circle_tree;
+
+circle_tree circ_leaf(int circ_idx);
+circle_tree circ_func(circle_func, int left_tree, int right_tree);
 
 
 void draw_circle_system(circle * circles, circle_tree * ctree,
