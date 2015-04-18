@@ -50,6 +50,71 @@ char * read_file(FILE * s){
   return str;
 }
 
+bool vexprcmpstr(value_expr val, const char * str){
+  if(strlen(str) == (size_t)val.strln){
+    if(strncmp(val.value,str,val.strln) == 0){
+      return true;
+    }
+  }
+  return false;
+}
+  
+	  
+typedef struct{
+  int typeid;
+  union{
+    u64 data;
+    double data_double;
+    char * data_str;
+  };
+}lisp_result;
+
+void * acopy(void * data, size_t len){
+  void * out_data = malloc(len);
+  memcpy(out_data,data,len);
+  return out_data;
+}
+	  
+void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
+  if(expr->type == VALUE){
+    value_expr val = expr->value;
+    char str[val.strln + 1];
+    memcpy(str,val.value,val.strln + 1);
+    switch(val.type){
+    case NUMBER:
+      result->data_double = strtod(str,NULL);
+      break;
+    case KEYWORD:
+    case SYMBOL:
+    case STRING:
+      result->typeid = val.type;
+      result->data_str = acopy(str,val.strln + 1);
+      break;
+    default:
+      ERROR("Unsupported val type: %i", val.type);
+    }
+  }else if(expr->type == EXPRESSION){
+    sub_expression_expr sexpr = expr->sub_expression;
+    value_expr name = sexpr.name;
+    lisp_result results[sexpr.sub_expression_count];
+    for(int i = 0; i < sexpr.sub_expression_count; i++){
+      eval_expr(sexpr.sub_expressions + i, just_check_types, results + i);
+    }
+    if(vexprcmpstr(name, "circle")){
+      
+    }else if(vexprcmpstr(name, "entity")){
+      
+    }else if(vexprcmpstr(name, "from.rgb")){
+
+    }else if(vexprcmpstr(name, "color")){
+    }else{
+      loge("Unknown function '%.*s'",name.strln,name.value);
+    }
+  }else{
+    ERROR("Unsupported action ");
+  }
+}
+
 int circle_sg_main(){
   FILE * l1 = fopen("level1.lisp","rb");
   char * l1_data = read_file(l1);
@@ -58,14 +123,20 @@ int circle_sg_main(){
   char * end_of_parse = lisp_parse(l1_data, exprs, &exprs_cnt);
   if(end_of_parse == NULL)
     ERROR("Could not parse whole file.");
-  
   log("parsed %i expressions\n", exprs_cnt);
   
-  for(int i = 0 ; i < exprs_cnt; i++)
+  for(int i = 0 ; i < exprs_cnt; i++){
+    printf("** Evaluating:\n");
     print_expression(exprs + i);
-  return 0;
+    lisp_result r;
+    eval_expr(exprs + i, false, &r);
+
+  }
+
+  if(true)
+    return 0;
   //return test_lisp_parser();
-  test_circle();
+  /*test_circle();
   if(!test_util_hash_table()){
     printf("ERROR\n");
     //return -1;
@@ -95,7 +166,7 @@ int circle_sg_main(){
 
   state.selected_idx = 1;
 
-  ccdispatch * dis = ccstart();
+  //ccdispatch * dis = ccstart();
   
 
   game_renderer * renderer = renderer_load();
@@ -120,7 +191,8 @@ int circle_sg_main(){
   mat3 mt = mat3_2d_translation(200,200);
   mt = mat3_mul(mt,m2);
   //circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}}; 
-  circle_tree tree2[] = {{ISEC,1,2},{LEAF,0,0},{ISEC,1,2},{LEAF,1,0},{LEAF,2,0}}; 
+  circle_tree tree2[5];
+  tree2[0] = (circle_tree){ISEC,1,2};//,{LEAF,0,0},{ISEC,1,2},{LEAF,1,0},{LEAF,2,0}}; 
   circle_tform(circles2,array_count(circles2),m1);
   circle_tform(circles,array_count(circles),m3);
   circle_tform(circles,array_count(circles),mt);
@@ -167,5 +239,5 @@ int circle_sg_main(){
   }
   free(ct);  
   renderer_unload(renderer);
-  return 0;
+  return 0;*/
 }

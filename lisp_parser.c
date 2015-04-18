@@ -25,9 +25,6 @@ bool is_keyword_char(char c){
   return !is_endexpr(c);
 }
 
-
-
-
 char * parse_keyword(char * code, value_expr * kw){
   if(code[0] != ':')
     return NULL;
@@ -163,9 +160,10 @@ char * parse_expression(char * code, expression * out_expr){
   return NULL;
 }
 
-void delete_expression(expression * expr){
-  
-}
+//not implemented yet
+//void delete_expression(expression * expr){
+//  
+//}
 
 char * value_type2str(value_type vt){
   switch(vt){
@@ -222,7 +220,7 @@ int test_lisp_parser(){
   expression exprs[10];
   int exprs_count = 10;
 
-  char * end = lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
+  lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
   for(int i = 0; i < exprs_count; i++)
     print_expression(exprs + i);
   return 0;
