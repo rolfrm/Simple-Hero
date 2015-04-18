@@ -153,26 +153,33 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
 
   SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
   u8 * image = malloc(rect.w * rect.h);
+  u8 * image_fin = malloc(rect.w * rect.h);
   u8 * image24 = malloc(rect.w * rect.h * 4);
-  log("rendering trees: %i\n",state->trees_count);
+  memset(image_fin,0,rect.w * rect.h);
   for(int i = 0; i < state->trees_count; i++){
+    memset(image,0,rect.w * rect.h);
     circle c = state->trees[i].circles[0];
-    logd("%-2i: rendering %f %f %f\n",c.xy.x, c.xy.y, c.r);
     draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
-    int cnt = rect.w * rect.h;
-    for(int i = 0; i < cnt; i++){
-      int idx2 = i * 4;
-      image24[idx2] = image[i];
-      image24[idx2 + 1] = image[i];
-      image24[idx2 + 2] = image[i];
+    u128 * a = (u128 *)image, * b = (u128 *) image_fin;
+    for(int i = 0 ; i < rect.w * rect.h / sizeof(u128); i++){
+      b[i] |= a[i];
     }
-    SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
-    
-    SDL_UpdateTexture(renderer->circ, NULL, image24, rect.w * 4);
-    SDL_RenderCopy(renderer->renderer, renderer->circ, NULL, &rect);
   }
+  int cnt = rect.w * rect.h;
+  for(int i = 0; i < cnt; i++){
+    int idx2 = i * 4;
+    image24[idx2] = image_fin[i];
+    image24[idx2 + 1] = image_fin[i];
+    image24[idx2 + 2] = image_fin[i];
+  }
+  SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
+  
+  SDL_UpdateTexture(renderer->circ, NULL, image24, rect.w * 4);
+  SDL_RenderCopy(renderer->renderer, renderer->circ, NULL, &rect);
+  
   free(image);
   free(image24);
+  free(image_fin);
 
 
   SDL_RenderPresent(renderer->renderer);

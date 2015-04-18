@@ -7,5 +7,5 @@
 	(circle 200.0 20.0 5))
 
 (entity :scenery 1
-	(circle 150 150 30))
+	(circle 300 300 150))
        
