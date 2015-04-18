@@ -11,6 +11,7 @@
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
 #include "../bitguy/linmath.h"
+#include "color.h"
 #include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
@@ -154,31 +155,31 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
   u8 * image = malloc(rect.w * rect.h);
   u8 * image_fin = malloc(rect.w * rect.h);
-  u8 * image24 = malloc(rect.w * rect.h * 4);
+  u8 * image32 = malloc(rect.w * rect.h * 4);
   memset(image_fin,0,rect.w * rect.h);
   for(int i = 0; i < state->trees_count; i++){
+    u32 basecolor = state->colors[i].color;
     memset(image,0,rect.w * rect.h);
     circle c = state->trees[i].circles[0];
     draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
-    u128 * a = (u128 *)image, * b = (u128 *) image_fin;
-    for(int i = 0 ; i < rect.w * rect.h / sizeof(u128); i++){
-      b[i] |= a[i];
+    
+    u32 * image322 = (u8 *)image32;
+    int cnt = rect.w * rect.h;
+    for(int j = 0; j < cnt; j++){
+      u8 col = image[j];
+      u32 colormask = col | (col << 8) | (col << 16) | (0xFF << 24);
+      u32 fcolor = colormask & basecolor;
+      image322[j] |= fcolor;
     }
   }
-  int cnt = rect.w * rect.h;
-  for(int i = 0; i < cnt; i++){
-    int idx2 = i * 4;
-    image24[idx2] = image_fin[i];
-    image24[idx2 + 1] = image_fin[i];
-    image24[idx2 + 2] = image_fin[i];
-  }
+  
   SDL_QueryTexture(renderer->circ, NULL, NULL, &rect.w, &rect.h);    
   
-  SDL_UpdateTexture(renderer->circ, NULL, image24, rect.w * 4);
+  SDL_UpdateTexture(renderer->circ, NULL, image32, rect.w * 4);
   SDL_RenderCopy(renderer->renderer, renderer->circ, NULL, &rect);
   
   free(image);
-  free(image24);
+  free(image32);
   free(image_fin);
 
 

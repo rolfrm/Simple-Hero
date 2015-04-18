@@ -1,12 +1,4 @@
-// requires bitgui.h, circle.h, lisp_parser.h
-
-typedef struct{
-  union{
-    u8 data[4];
-    u8 r,g,b,a;
-    int color;
-  };
-}color;
+// requires bitguy.h, circle.h, lisp_parser.h, color.h
 
 typedef struct{
   char * id;

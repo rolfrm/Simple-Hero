@@ -18,6 +18,7 @@ typedef struct _game_state{
   int logitem_count;
 
   circ_tree * trees;
+  color * colors;
   int trees_count;
   
   int selected_idx;

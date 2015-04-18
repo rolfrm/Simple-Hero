@@ -5,7 +5,9 @@
 #include "../bitguy/linmath.h"
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
+#include "color.h"
 #include "circle.h"
+
 // Two circles a,b. dv is the speed of b relative to a. 
 // Out_tenter and out_tleave is time when a and b intersects, 
 // if they do at all if not these values will not be set..

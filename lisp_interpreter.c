@@ -6,6 +6,7 @@
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
 #include "../bitguy/linmath.h"
+#include "color.h"
 #include "circle.h"
 #include "lisp_parser.h"
 #include "lisp_interpreter.h"
@@ -77,6 +78,8 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
       // supports optional id. color, scenery.
       // requires a circle
       entity entity;
+      entity.id = "noid";
+      entity.color = (color){.color = 0xFFFFFFFF};
       for(size_t i = 0; i < array_count(results); i++){
 	lisp_result r = results[i];
 	if(r.typeid == KEYWORD){

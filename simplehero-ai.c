@@ -5,6 +5,7 @@
 #include "../bitguy/linmath.h"
 
 #include "microthreads.h"
+#include "color.h"
 #include "circle.h"
 #include "game_object.h"
 #include "game_state.h"
