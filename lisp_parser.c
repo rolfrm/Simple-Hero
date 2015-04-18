@@ -190,7 +190,7 @@ void print_expression(expression * expr){
       }
       break;
     case VALUE:
-      printf("%-7s: %*s  %.*s\n", value_type2str(value.type), indent, " ", value.strln,value.value);
+      printf("%-7s: %*s  |%.*s|\n", value_type2str(value.type), indent, " ", value.strln,value.value);
       break;
     }
   }
