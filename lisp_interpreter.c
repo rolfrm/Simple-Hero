@@ -72,7 +72,6 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
       circ.r = results[2].data_double;
       result->typeid = TYPEID_CIRCLE;
       result->circle = circ;
-      printf("success parsing circle\n");
       
     }else if(vexprcmpstr(name, "entity")){
       // supports optional id. color, scenery.
@@ -108,16 +107,15 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
 	  }else{
 	    goto jmperror;
 	  }
+	  free(results[i -1].data_str);
 	}else if(r.typeid == TYPEID_CIRCLE){
 	  entity.circle = r.circle;
 	}else{
-
 	  goto jmperror;
 	}
       }
       result->typeid = TYPEID_ENTITY;
       result->entity = entity;
-      printf("success parsing entity\n");
     }else if(vexprcmpstr(name, "from.rgb")){
       if(array_count(results) != 3)
 	goto jmperror;
@@ -129,7 +127,6 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
       }
       result->typeid = TYPEID_COLOR;
       result->color = color;
-      printf("success parsing color\n");
     }else{
       loge("Unknown function '%.*s'\n",name.strln,name.value);
     }

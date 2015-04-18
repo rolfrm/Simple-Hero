@@ -43,3 +43,4 @@
 	:color (from.rgb 100 100 255)
 	(circle 450.0 450.0 50))
 
+"hello!"

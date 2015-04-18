@@ -41,5 +41,6 @@ struct _expression{
 };
 
 char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count);
+void delete_expression(expression * expr);
 void print_expression(expression * expr);
 int test_lisp_parser();

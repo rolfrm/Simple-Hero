@@ -160,10 +160,16 @@ char * parse_expression(char * code, expression * out_expr){
   return NULL;
 }
 
-//not implemented yet
-//void delete_expression(expression * expr){
-//  
-//}
+// not implemented yet
+void delete_expression(expression * expr){
+  if(expr->type == EXPRESSION){
+    sub_expression_expr sexpr = expr->sub_expression;
+    for(int i = 0 ; i < sexpr.sub_expression_count; i++){
+      delete_expression(sexpr.sub_expressions + i);
+    }
+    free(sexpr.sub_expressions);
+  }
+}
 
 char * value_type2str(value_type vt){
   switch(vt){
@@ -220,8 +226,13 @@ int test_lisp_parser(){
   expression exprs[10];
   int exprs_count = 10;
 
-  lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
+  lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
+  
+  //for(int i = 0; i < exprs_count; i++)
+  //  print_expression(exprs + i);
+  printf("lisp expressions %i\n", exprs_count);
   for(int i = 0; i < exprs_count; i++)
-    print_expression(exprs + i);
+    delete_expression(exprs + i);
+  printf("gets here\n");
   return 0;
 }
