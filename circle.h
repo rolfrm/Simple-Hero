@@ -6,6 +6,8 @@ typedef struct _circle{
 
 bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_tleave);
 
+void circle_resolve_collision(circle * a, circle * b);
+
 typedef enum { LEAF, ADD, SUB, ISEC} circle_func;
 
 typedef struct _circle_tree{

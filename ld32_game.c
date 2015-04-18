@@ -54,7 +54,7 @@ char * read_file(FILE * s){
 void load_level(FILE * level_stream, game_state * state){
   char * l1_data = read_file(level_stream);
   char * end_of_parse = l1_data;
-
+  
   entity * entities = NULL;
   int entity_count = 0;
   while(end_of_parse != NULL && *end_of_parse != 0){
@@ -192,8 +192,6 @@ void ld32_main(){
   while(state.is_running){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;
-
-
       if(strcmp(ent->id, "enemy") == 0){
 	vec2 v2 = {.data = {0.0,0.0}};
 	if(player_ent != NULL)
@@ -201,7 +199,14 @@ void ld32_main(){
 	v2 = vec2_normalize(v2);
 	ent->circle.xy.x += rand() % 5 - 2;
 	ent->circle.xy.y += rand() % 5 - 2;
-	ent->circle.xy = vec2_add(ent->circle.xy, vec2_scale(v2,0.33));
+	ent->circle.xy = vec2_add(ent->circle.xy, vec2_scale(v2,0.4));
+      }
+    }
+    for(int i = 0 ; i < state.trees_count; i++){
+      for(int j = i + 1; j < state.trees_count; j++){
+	entity * enta = state.entities + i;
+	entity * entb = state.entities + j;
+	circle_resolve_collision(&enta->circle,&entb->circle);
       }
     }
     usleep(10000);
@@ -234,7 +239,6 @@ void ld32_main(){
     
     if(faulty)break;
   }
-  //  free(ct);  
   renderer_unload(renderer);
   return;
 }

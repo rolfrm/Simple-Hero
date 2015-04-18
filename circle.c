@@ -52,6 +52,19 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   return true;
 }
 
+void circle_resolve_collision(circle * a, circle * b){
+  vec2 d = vec2_sub(a->xy, b->xy);
+  float l = vec2_len(d);
+  float tsize = a->r + b->r;
+  float move =  tsize - l;
+  if(move > 0){
+    vec2 nd = vec2_scale(vec2_normalize(d), move * 0.5);
+    a->xy = vec2_add(a->xy,nd);
+    b->xy = vec2_sub(b->xy,nd);
+  }
+  
+}
+
 #include <stdio.h>
 #include <string.h>
 void draw_circle_system(circle * circles,
