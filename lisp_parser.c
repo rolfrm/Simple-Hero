@@ -14,18 +14,19 @@ char * take_while(char * data, bool (* fcn)(char char_code)){
 bool is_alphanum(char c){
   return isdigit(c) || isalpha(c);
 }
-
-bool is_keyword_char(char c){
-  return is_alphanum(c);
-}
-
 bool is_whitespace(char c){
-  return (bool)isspace(c);
+  return (bool)isspace(c) || c == '\n';
 }
 
 bool is_endexpr(char c){
   return c == ')' || is_whitespace(c) || c == 0;
 }
+bool is_keyword_char(char c){
+  return !is_endexpr(c);
+}
+
+
+
 
 char * parse_keyword(char * code, value_expr * kw){
   if(code[0] != ':')
@@ -166,34 +167,48 @@ void delete_expression(expression * expr){
   
 }
 
+char * value_type2str(value_type vt){
+  switch(vt){
+  case NUMBER: return "number";
+  case KEYWORD: return "keyword";
+  case STRING: return "string";
+  case COMMENT: return "comment";
+  case SYMBOL: return "symbol";
+  default: return "error. unknown type";
+  }
+}
+
 void print_expression(expression * expr){
+
+  void iprint(expression * expr, int indent){
     value_expr value = expr->value;
     sub_expression_expr subexpr = expr->sub_expression;
     
-  switch(expr->type){
-  case EXPRESSION:
-    printf("name: %.*s \n", value.strln, subexpr.name.value);
-    for(int i = 0 ; i < subexpr.sub_expression_count; i++){
-      print_expression(subexpr.sub_expressions + i);
+    switch(expr->type){
+    case EXPRESSION:
+      printf("%-7s: %*s %.*s \n","expr", indent, " ", value.strln, subexpr.name.value);
+      for(int i = 0 ; i < subexpr.sub_expression_count; i++){
+	iprint(subexpr.sub_expressions + i,indent + 1);
+      }
+      break;
+    case VALUE:
+      printf("%-7s: %*s  %.*s\n", value_type2str(value.type), indent, " ", value.strln,value.value);
+      break;
     }
-    break;
-  case VALUE:
-    printf("Value: %i %.*s\n",value.type, value.strln,value.value);
-    break;
   }
+  iprint(expr,0);
 }
 
 
 char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count){
   for(int i = 0 ; i < *out_exprs_count; i++){
     code = take_while(code, is_whitespace);
+
     char * cn = parse_expression(code, out_exprs + i);
     if(cn == NULL){
       *out_exprs_count = i;
       return NULL;
     }
-    print_expression(out_exprs + i);
-
     code = cn;
     if(*code == 0) {
       *out_exprs_count = i + 1;
@@ -206,6 +221,7 @@ char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count){
 int test_lisp_parser(){
   expression exprs[10];
   int exprs_count = 10;
+
   char * end = lisp_parse("(hej 1.0312)(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
   for(int i = 0; i < exprs_count; i++)
     print_expression(exprs + i);

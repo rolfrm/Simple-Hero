@@ -36,7 +36,34 @@ logitem * get_logoption(logitem * items, size_t count, int idx){
   return items + (count - 1 - idx);
 }
 
+char * read_file(FILE * s){
+  fseek(s, 0, SEEK_END);
+  i64 p = ftell(s);
+  char * str = malloc(p);
+  fseek(s,0,SEEK_SET);
+  i64 read_p = fread(str, 1, p,s);
+  if(read_p != p){
+    ERROR("Unexpected EOF %i != %i", p, read_p);
+    free(str);
+    return NULL;
+  }
+  return str;
+}
+
 int circle_sg_main(){
+  FILE * l1 = fopen("level1.lisp","rb");
+  char * l1_data = read_file(l1);
+  expression exprs[10];
+  int exprs_cnt = array_count(exprs);
+  char * end_of_parse = lisp_parse(l1_data, exprs, &exprs_cnt);
+  if(end_of_parse == NULL)
+    ERROR("Could not parse whole file.");
+  
+  log("parsed %i expressions\n", exprs_cnt);
+  
+  for(int i = 0 ; i < exprs_cnt; i++)
+    print_expression(exprs + i);
+  return 0;
   //return test_lisp_parser();
   test_circle();
   if(!test_util_hash_table()){
