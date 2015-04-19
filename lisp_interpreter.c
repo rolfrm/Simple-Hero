@@ -74,7 +74,7 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
     for(int i = 0; i < sexpr.sub_expression_count; i++){
       eval_expr(sexpr.sub_expressions + i, just_check_types, results + i);
       if(results[i].typeid == TYPEID_ERROR){
-	loge("ERROR matching type at %s arg %i", name.value, i);
+	ERROR("ERROR matching type at '%.*s' arg %i ",name.strln, name.value, i);
       }
     }
     
@@ -82,19 +82,43 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
       circle circ;
       if(array_count(results) != 3)
 	loge("circle requires three arguments");
-      for(int i = 0; i < array_count(results); i++)
+      for(u32 i = 0; i < array_count(results); i++)
 	if(results[i].typeid != TYPEID_DOUBLE)
 	  loge("Circle only supports DOUBLE args");
-      circ.xy = (vec2){results[0].data_double, results[1].data_double};
+      circ.xy = (vec2){.data = {results[0].data_double, results[1].data_double}};
       circ.r = results[2].data_double;
       result->typeid = TYPEID_CIRCLE;
-      result->circle = circ;
+      result->circle = (circle_graph){.type = CG_LEAF, .circ = circ};
+    }else if(vexprcmpstr(name, "add") || vexprcmpstr(name, "sub") || vexprcmpstr(name, "isec") ){
+      if(array_count(results) != 2){
+	ERROR("unexpected number of args");
+	goto jmperror;
+      }
+      for(u32 i = 0; i < array_count(results); i++){
+	if(results[i].typeid != TYPEID_CIRCLE){
+	  ERROR("add only accepts CIRCLE graph args (arg %i)", i);
+	  goto jmperror;
+	}
+      }
+      circle_graph_node * cg = malloc(sizeof(circle_graph_node));
+      if(vexprcmpstr(name, "add")){
+	cg->func = ADD;
+      }else if(vexprcmpstr(name, "sub")){
+	cg->func = SUB;
+      }else if(vexprcmpstr(name, "isec")){
+	cg->func = ISEC;
+      }
+      cg->left = results[0].circle;
+      cg->right = results[1].circle;
+      result->circle.type = CG_NODE;
+      result->circle.node =cg;
+      result->typeid = TYPEID_CIRCLE;
       
     }else if(vexprcmpstr(name, "entity")){
       // supports optional id. color, scenery.
       // requires a circle
       entity entity;
-      entity.id = "noid";
+      entity.id = NULL;
       entity.color = (color){.color = 0xFFFFFFFF};
       for(size_t i = 0; i < array_count(results); i++){
 	lisp_result r = results[i];
@@ -106,6 +130,7 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
 	      goto jmperror;
 	    
 	    entity.id = r.data_str;
+	    entity.type = game_type_from_string(entity.id);
 	  }else if(strcmp(r.data_str, "color") == 0){
 	    
 	    i++;
@@ -113,14 +138,6 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
 	    if(r.typeid != TYPEID_COLOR)
 	      goto jmperror;
 	    entity.color = r.color;
-	  }else if(strcmp(r.data_str, "scenery") == 0){
-	    i++;
-	    r = results[i];
-	    if(r.typeid != TYPEID_DOUBLE)
-	      goto jmperror;
-	    int v = (int)r.data_double;
-	    entity.is_scenery = (bool)v;
-	  
 	  }else{
 	    goto jmperror;
 	  }

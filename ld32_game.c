@@ -18,6 +18,7 @@
 #include "game_controller.h"
 extern bool faulty;
 
+
 void run_ai(ccdispatch * dispatcher, game_state * gs);
 bool test_circle();
 
@@ -82,7 +83,7 @@ void load_level(FILE * level_stream, game_state * state){
 	entity_count++;
       }
     }
-
+    
     entities = realloc(entities, entity_count * sizeof(entity));
     
     entity_cnt = 0;
@@ -96,13 +97,18 @@ void load_level(FILE * level_stream, game_state * state){
     }
   }
 
+  int circle_cnt =0;
+  for(int i = 0 ; i < entity_count;i++){
+
+  }
+
   circle * circles =  malloc(entity_count * sizeof(circle));
   circle_tree * circ_trees = malloc(entity_count * sizeof(circle_tree));
   circ_tree *circc_trees = malloc(entity_count * sizeof(circ_tree));
   color * colors = malloc(entity_count * sizeof(color));
-
+  
   for(int i = 0; i < entity_count; i++){
-    circles[i] = entities[i].circle;
+    circles[i] = entities[i].circle.circ;
     circ_trees[i] = circ_leaf(0);
     circc_trees[i] = (circ_tree){circ_trees + i,circles + i}; 
     colors[i] = entities[i].color;
@@ -122,8 +128,9 @@ void unload_level(game_state * state){
   free(state->trees[0].tree);
   free(state->trees);
   free(state->colors);
+  free(state->circles);
   for(int i = 0 ; i < state->trees_count; i++)
-    if(state->entities[i].id != "noid")
+    if(state->entities[i].id != NULL)
       free(state->entities[i].id);
   free(state->entities);
   state->colors = NULL;
@@ -146,29 +153,44 @@ void ld32_main(){
   state.items = malloc(sizeof(game_obj) * 0);
   state.is_running = true;
   state.item_count = 0;
-
+  
   void quitfcn (){
     state.is_running = false;
     printf("qqquiiit!\n");
   }
-
+  
   void printhi(){
     printf("hi..\n");
   }
-
+  
   game_renderer * renderer = renderer_load();
   
   game_controller gc = game_controller_blank;
-
+  
   entity * player_ent = NULL;
+  entity * weapon_ent = NULL;
+  vec2 weapon_offset = {.data = {0.0, 0.0}};
   void load_game(){
     FILE * l1 = fopen("level1.lisp","rb");
     load_level(l1, &state);
     fclose(l1);
     player_ent = NULL;
+    weapon_ent = NULL;
     for(int i = 0 ; i < state.trees_count; i++){
-      if(strcmp(state.entities[i].id,"player") == 0)
-	player_ent = state.entities + i;
+      game_type type = state.entities[i].type;
+      switch(type){
+      case PLAYER:
+      	player_ent = state.entities + i;
+	break;
+      case WEAPON:
+	weapon_ent = state.entities + i;
+	break;
+      default:
+	break;
+      }
+    }
+    if(player_ent != NULL && weapon_ent != NULL){
+      weapon_offset = vec2_sub(weapon_ent->xy, player_ent->xy);
     }
   }
 
@@ -192,22 +214,53 @@ void ld32_main(){
   while(state.is_running){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;
-      if(strcmp(ent->id, "enemy") == 0){
+      if(ent->type & ENEMY && !(ent->type & DEAD)){
 	vec2 v2 = {.data = {0.0,0.0}};
 	if(player_ent != NULL)
-	  v2 = vec2_sub(player_ent->circle.xy, ent->circle.xy);
+	  v2 = vec2_sub(player_ent->xy, ent->xy);
 	v2 = vec2_normalize(v2);
-	ent->circle.xy.x += rand() % 5 - 2;
-	ent->circle.xy.y += rand() % 5 - 2;
-	ent->circle.xy = vec2_add(ent->circle.xy, vec2_scale(v2,0.4));
+	ent->xy.x += rand() % 5 - 2;
+	ent->xy.y += rand() % 5 - 2;
+	ent->xy = vec2_add(ent->xy, vec2_scale(v2,0.4));
       }
     }
     for(int i = 0 ; i < state.trees_count; i++){
       for(int j = i + 1; j < state.trees_count; j++){
-	entity * enta = state.entities + i;
+	/*entity * enta = state.entities + i;
 	entity * entb = state.entities + j;
-	circle_resolve_collision(&enta->circle,&entb->circle);
+	game_type ta = enta->type, tb = entb->type;
+	if((ta | tb) & DEAD)
+	  continue;
+	bool one_weapon = (ta | tb) & WEAPON;
+	bool one_enemy =  (ta | tb) & ENEMY;
+	bool one_player = (ta | tb) & PLAYER;
+	bool dontresolve = one_weapon;
+	float move_ratio = (enta->type & SCENERY) ? 0.0 : 0.5;
+	if(ta & SCENERY){
+	  if(tb & SCENERY) continue;
+	  move_ratio = 1.0;
+	}
+	vec2 moveout;
+	bool collides = false;//circle_collision(&enta->circle,&entb->circle,&moveout);
+	if(collides && !dontresolve){
+	  // handle collision
+	}
+	if(collides && one_enemy && one_weapon){
+	  entity * victim = (ta & ENEMY) ? enta : entb;
+	  victim->type |= DEAD;
+	  victim->color = (color){.data = {68,68,68,255}}; 
+	}
+	if(collides && one_enemy && one_player){
+	  entity * victim = (ta & PLAYER) ? enta : entb;
+	  victim->type |= DEAD;
+	  victim->color = (color){.data = {68,68,68,255}}; 
+	  weapon_ent->type |= DEAD;
+	  weapon_ent->color = (color){.data = {68,68,68,255}}; 
+	  }*/
       }
+    }
+    for(int i = 0 ; i < state.trees_count; i++){
+      state.colors[i] = state.entities[i].color;
     }
     usleep(10000);
     renderer_render_game(renderer,&state);
@@ -234,11 +287,14 @@ void ld32_main(){
       logitem * itm = get_logoption(logitems,array_count(logitems),state.selected_idx);
       if(itm != NULL) itm->cb(NULL);
     }
-    player_ent->circle.xy.x += gc.x;
-    player_ent->circle.xy.y += gc.y;
+    if(player_ent != NULL && false == (player_ent->type & DEAD)){
+      player_ent->xy = vec2_add(player_ent->xy,(vec2){.data = {gc.x,gc.y}});
+      
+      if(weapon_ent != NULL)
+	weapon_ent->xy = vec2_add(player_ent->xy,weapon_offset);
+    }
     
-    if(faulty)break;
+    if(faulty) break;
   }
   renderer_unload(renderer);
-  return;
 }

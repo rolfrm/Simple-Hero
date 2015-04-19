@@ -10,7 +10,7 @@ typedef enum{
   JOY_BUTTON,
   JOY_DEVICE,
   QUIT,
-  UNKNOWN
+  EVENT_UNKNOWN
 }event_type;
 
 

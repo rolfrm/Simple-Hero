@@ -212,7 +212,7 @@ event sdl_event_to_event(SDL_Event sdlevt){
     evt.type = QUIT;
     break;
   default:
-    evt.type = UNKNOWN;
+    evt.type = EVENT_UNKNOWN;
   }
   return evt;
 }

@@ -6,8 +6,6 @@ typedef struct _circle{
 
 bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_tleave);
 
-void circle_resolve_collision(circle * a, circle * b);
-
 typedef enum { LEAF, ADD, SUB, ISEC} circle_func;
 
 typedef struct _circle_tree{
@@ -34,9 +32,13 @@ typedef struct{
   circle * circles;
 }circ_tree;
 
-
 circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b);
 
 void circle_move(circle * c, int count, vec2 offset);
 void circle_tform(circle * c, int count, mat3 t);
+
+// returns true in case of collision
+bool circle_collision(circle * a, circle * b, vec2 * moveout);
+bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout);
 bool test_circle();
+

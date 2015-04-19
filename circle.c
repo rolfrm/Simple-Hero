@@ -52,17 +52,95 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   return true;
 }
 
-void circle_resolve_collision(circle * a, circle * b){
+bool circle_collision(circle * a, circle * b, vec2 * moveout){
   vec2 d = vec2_sub(a->xy, b->xy);
   float l = vec2_len(d);
   float tsize = a->r + b->r;
   float move =  tsize - l;
   if(move > 0){
-    vec2 nd = vec2_scale(vec2_normalize(d), move * 0.5);
-    a->xy = vec2_add(a->xy,nd);
-    b->xy = vec2_sub(b->xy,nd);
+    vec2 nd = vec2_scale(vec2_normalize(d), move);
+    *moveout = nd;
+    return true;
   }
-  
+  return false;
+}
+
+bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
+  bool check_col(int aidx, int bidx){
+    circle_tree * ca = a->tree + aidx;
+    circle_tree * cb = b->tree + bidx;
+    if(ca->func == LEAF && cb->func == LEAF){
+      return circle_collision(a->circles + ca->circle, b->circles + cb->circle, moveout);
+    }
+    if(ca->func == LEAF){
+      bool leftcollides = check_col(aidx,cb->left);
+      bool rightcollides = check_col(aidx,cb->right);
+      switch(cb->func){
+      case ADD:
+	return leftcollides || rightcollides;
+      case ISEC:
+	return leftcollides && rightcollides;
+      case SUB:
+	return leftcollides && !rightcollides;
+      default:
+	ERROR("unknown func");
+	return false;
+      }
+    }
+    if(ca->func == LEAF){
+      bool leftcollides = check_col(ca->left, bidx);
+      bool rightcollides = check_col(ca->right, bidx);
+      switch(cb->func){
+      case ADD:
+	return leftcollides || rightcollides;
+      case ISEC:
+	return leftcollides && rightcollides;
+      case SUB:
+	return leftcollides && !rightcollides;
+      default:
+	ERROR("unknown func");
+	return false;
+      }
+    }
+    // both funcs are NODEs
+    bool cll = check_col(ca->left,cb->left);
+    bool clr = check_col(ca->left,cb->right);
+    bool crl = check_col(ca->right,cb->left);
+    bool crr = check_col(ca->right,cb->right);
+    bool cl,cr;
+    // calc partial solutions
+    switch(ca->func){
+    case ADD:
+      cl = cll | clr;
+      cr = crl | crr;
+      break;
+    case SUB:
+      cl = cll && !clr;
+      cr = crl && !crr;
+      break;
+    case ISEC:
+      cl = cll && clr;
+      cr = crl && crr;
+      break;
+    default:
+      ERROR("UNKNOWN FuNC");
+      return false;
+    }
+    switch(cb->func){
+    case ADD:
+      return cl || cr;
+    case ISEC:
+      return cl && cr;
+    case SUB:
+      return cl && !cr;
+    default:
+      ERROR("unknown func");
+      return false;
+    }
+    ERROR("Should never be reached");
+    return false;
+  }
+  return check_col(0,0);
 }
 
 #include <stdio.h>
@@ -89,7 +167,6 @@ void draw_circle_system(circle * circles,
       }
       int ystart = MAX(0, y - circ.r);
       int yend = MIN(height-1, y + circ.r + 1);
-      float r2 = circ.r * circ.r;
       for(int j = ystart; j < yend; j++){
 	int dy = y - j;
 	float diff = sqrt(MAX(0, (circ.r + 1) * (circ.r + 1) - dy * dy));
@@ -109,10 +186,9 @@ void draw_circle_system(circle * circles,
       u8 * buf2 = malloc(width * height);
       blit(ctree + nd.left, buffer);
       blit(ctree + nd.right, buf2);
-      int size = width * height;
-      u128 * buf = buf2;
+      u128 * buf = (u128 *) buf2;
       u128 * end = buf + width * height / sizeof(u128);
-      u128 * bufo = buffer;
+      u128 * bufo = (u128 *) buffer;
       switch(nd.func){
       case ADD:
 	for(;buf < end;bufo++, buf++)
@@ -126,6 +202,8 @@ void draw_circle_system(circle * circles,
 	for(;buf < end;bufo++, buf++)
 	  *bufo &= *buf;
 	break;
+      default:
+	ERROR("not supposed to happen");
       }
       free(buf2);
     }
@@ -208,9 +286,9 @@ circle_tree circ_func(circle_func func, int left_tree, int right_tree){
 // testing //
 
 bool test_circle_sweep(){
-  circle a = {{0.0,0.0},1.0};
-  circle b = {{4.0,4.0},1.0};
-  vec2 dv = {-1.0,-1.0};
+  circle a = {{.data = {0.0,0.0}},1.0};
+  circle b = {{.data = {4.0,4.0}},1.0};
+  vec2 dv = {.data = {-1.0,-1.0}};
   float enter,leave;
   bool collides = circle_sweep(a,b,dv,&enter,&leave);
   
@@ -231,20 +309,20 @@ void print_image(u8 * img, int w, int h){
 
 bool test_draw_circle_system(){
   int w = 32;
-  circle circles[] = {{{0/2,0},10}
-		      ,{{0/2,0 + 4},5}
-		      ,{{0/2,0},3}};
-  circle_tree tree[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
-  circle circles2[] = {{{0/2,0},10}
-		      ,{{0/2,0 + 4},5}
-		      ,{{0/2,0},3}};
-  circle_tree tree2[] = {{SUB,1,2},{LEAF,0,0},{SUB,1,2},{LEAF,1,0},{LEAF,2,0}};
+  circle circles[] = {{{.data = {0/2,0}},10}
+		      ,{{.data = {0/2,0+ 4} },5}
+		      ,{{.data = {0/2,0}},3}};
+  circle_tree tree[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,1,2),circ_leaf(1),circ_leaf(2)};
+  circle circles2[] = {{{.data = {0/2,0}},10}
+		       ,{{.data = {0/2,0 + 4}},5}
+		       ,{{.data = {0/2,0}},3}};
+  circle_tree tree2[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,1,2),circ_leaf(1),circ_leaf(2)};
 
   mat3 m = mat3_2d_rotation(2.14);
   circle_tform(circles2,array_count(circles2), m);
   circle_tform(circles,array_count(circles), m);
   circle_tform(circles,array_count(circles), mat3_2d_translation(20,20));
-  circle_move(circles2,array_count(circles2), (vec2){50,50});
+  circle_move(circles2,array_count(circles2), (vec2){.data = {50,50}});
   circ_tree ct = {tree, circles};
   circ_tree ct2 = {tree2, circles2};
   ct2.circles = circles2;
@@ -262,10 +340,10 @@ bool test_draw_circle_system(){
 
 void circle_bench_test(){
   int w = 32;
-  circle circles[] = {{{w/2,w/2},3}
-		      ,{{w/2,w/2 },3}
-		      ,{{w/2,w/2 },3}};
-  circle_tree tree[] = {{ISEC,1,2},{LEAF,0,0},{ADD,1,2},{LEAF,1,0},{LEAF,2,0}};
+  circle circles[] = {{.xy = {.data ={w/2,w/2}}, .r = 3}
+		      ,{.xy = {.data = {w/2,w/2 }}, .r = 3}
+		      ,{.xy = {.data = {w/2,w/2 }}, .r = 3}};
+  circle_tree tree[] = {circ_func(ISEC,1,2), circ_leaf(0),circ_func(ADD,1,2), circ_leaf(1), circ_leaf(2)};
   int size = circle_tree_size(tree);
   int leafs = circle_tree_max_leaf(tree);
   printf("size: %i\n",size);

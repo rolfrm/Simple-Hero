@@ -6,7 +6,7 @@ typedef struct{
     u64 data;
     double data_double;
     char * data_str;
-    circle circle;
+    circle_graph circle;
     color color;
     entity entity;
   };

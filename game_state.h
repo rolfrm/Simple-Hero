@@ -1,11 +1,56 @@
 //requires game_object.h, circle.h
 struct _game_state;
 
+// If changed here, please change game_state.c
+typedef enum{
+  //FLAGS:
+  UNKNOWN = 0,
+  DEAD =   0b10000000000,
+  WEAPON = 0b01000000000,
+  PLAYER = 0b00100000000,
+  ENEMY =  0b00010000000,
+  SCENERY= 0b00001000000,
+  //specific types
+  DELETED = 1,
+  GOBLIN = ENEMY | 1,
+  GRASS =  SCENERY | 2,
+  WALL =   SCENERY | 3,
+  CAMPFIRE = SCENERY | 4
+}game_type;
+
+game_type game_type_from_string(char * str);
+
+typedef enum{
+  CG_LEAF,
+  CG_NODE
+}circle_graph_type;
+
+typedef struct _circle_graph_node circle_graph_node;
+
+typedef struct _circle_graph{
+  circle_graph_type type;
+  union{
+    circle circ;
+    circle_graph_node * node;
+  };
+}circle_graph;
+
+struct _circle_graph_node
+{
+  circle_func func;
+  circle_graph left, right;
+};
+
+
+int circle_graph_count_circles(circle_graph graph);
+
 typedef struct{
   char * id;
+  game_type type;
   color color;
-  circle circle;
-  bool is_scenery;
+  circle_graph circle;
+  vec2 xy;
+  float rotation;
 }entity;
 
 
@@ -29,6 +74,7 @@ typedef struct _game_state{
 
   entity * entities;
   circ_tree * trees;
+  circle * circles;
   color * colors;
   int trees_count;
   
