@@ -21,8 +21,8 @@ typedef enum{
 game_type game_type_from_string(char * str);
 
 typedef enum{
-  CG_LEAF,
-  CG_NODE
+  CG_LEAF = 7,
+  CG_NODE = 8
 }circle_graph_type;
 
 typedef struct _circle_graph_node circle_graph_node;
@@ -43,7 +43,7 @@ struct _circle_graph_node
 
 
 int circle_graph_count_circles(circle_graph graph);
-
+void write_circles_to_array(circle_graph graph, circle * array);
 typedef struct{
   char * id;
   game_type type;
@@ -53,6 +53,7 @@ typedef struct{
   float rotation;
 }entity;
 
+circ_tree * make_circ_tree(entity * entities, int count);
 
 typedef struct {
   char * text;
@@ -74,7 +75,6 @@ typedef struct _game_state{
 
   entity * entities;
   circ_tree * trees;
-  circle * circles;
   color * colors;
   int trees_count;
   

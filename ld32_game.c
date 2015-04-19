@@ -97,25 +97,14 @@ void load_level(FILE * level_stream, game_state * state){
     }
   }
 
-  int circle_cnt =0;
-  for(int i = 0 ; i < entity_count;i++){
-
-  }
-
-  circle * circles =  malloc(entity_count * sizeof(circle));
-  circle_tree * circ_trees = malloc(entity_count * sizeof(circle_tree));
-  circ_tree *circc_trees = malloc(entity_count * sizeof(circ_tree));
+  circ_tree *cc2 = make_circ_tree(entities,entity_count);
   color * colors = malloc(entity_count * sizeof(color));
-  
   for(int i = 0; i < entity_count; i++){
-    circles[i] = entities[i].circle.circ;
-    circ_trees[i] = circ_leaf(0);
-    circc_trees[i] = (circ_tree){circ_trees + i,circles + i}; 
     colors[i] = entities[i].color;
   }
   
   state->entities = entities;
-  state->trees = circc_trees;
+  state->trees = cc2;
   state->trees_count = entity_count;
   state->colors = colors;
   free(l1_data);
@@ -128,11 +117,11 @@ void unload_level(game_state * state){
   free(state->trees[0].tree);
   free(state->trees);
   free(state->colors);
-  free(state->circles);
+ 
   for(int i = 0 ; i < state->trees_count; i++)
     if(state->entities[i].id != NULL)
       free(state->entities[i].id);
-  free(state->entities);
+      free(state->entities);
   state->colors = NULL;
   state->trees = NULL;
   state->trees_count = 0;
@@ -209,8 +198,11 @@ void ld32_main(){
   state.logitem_count = array_count(logitems);
 
   state.selected_idx = 0;
-  
   load_game();
+  for(int i = 0; i < 100; i++){
+    printf("reloading..\n");
+    reload_game();
+  }
   while(state.is_running){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;

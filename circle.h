@@ -37,6 +37,9 @@ circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b);
 void circle_move(circle * c, int count, vec2 offset);
 void circle_tform(circle * c, int count, mat3 t);
 
+int circle_tree_size(circle_tree * tr);
+int circle_tree_max_leaf(circle_tree * tr);
+
 // returns true in case of collision
 bool circle_collision(circle * a, circle * b, vec2 * moveout);
 bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout);
