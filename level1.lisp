@@ -1,7 +1,7 @@
 (entity :id "player"
 	:color (from.rgb 160 130 130)
-	(add 
-	 (circle 400 400 50)
+	(isec 
+	 (circle 400 400 60)
 	 (circle 400 450 50)))
 
 (entity :id "weapon"

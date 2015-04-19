@@ -157,8 +157,9 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   for(int i = 0; i < state->trees_count; i++){
     u32 basecolor = state->colors[i].color;
     memset(image,0,rect.w * rect.h);
-    draw_circle_system(&state->entities[i].circle,state->trees[i].tree,image,rect.w,rect.h);
-    u32 * image322 = (u8 *)image32;
+    draw_circle_system(state->trees[i].circles,state->trees[i].tree,image,rect.w,rect.h);
+    u32 * image322 = (u32 *) image32;
+
     int cnt = rect.w * rect.h;
     for(int j = 0; j < cnt; j++){
       u8 col = image[j];
@@ -179,9 +180,7 @@ void renderer_render_game(game_renderer * renderer, game_state * state){
   free(image_fin);
 
   SDL_RenderPresent(renderer->renderer);
-  checkRenderError();
-  
-  SDL_Event evt; 
+  checkRenderError(); 
 }
 
 u32 renderer_read_events(event * buffer, u32 count){

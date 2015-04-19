@@ -199,10 +199,10 @@ void ld32_main(){
 
   state.selected_idx = 0;
   load_game();
-  for(int i = 0; i < 100; i++){
-    printf("reloading..\n");
-    reload_game();
-  }
+  //for(int i = 0; i < 100; i++){
+  //  printf("reloading..\n");
+  //  reload_game();
+  //}
   while(state.is_running){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;
