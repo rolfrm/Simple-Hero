@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include "microthreads.h"
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
@@ -16,6 +17,7 @@
 #include "lisp_parser.h"
 #include "lisp_interpreter.h"
 #include "game_controller.h"
+
 extern bool faulty;
 
 
@@ -206,6 +208,15 @@ void ld32_main(){
   while(state.is_running){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;
+      circ_tree * ct = state.trees + i;
+      int max_leaf = circle_tree_max_leaf(ct->tree);
+      printf(" -- ");
+      vec2_print(ent->xy);
+      printf(" -- \n");
+      for(int i = 0; i < max_leaf;i++){
+	ct->circles[i].xy = vec2_add(ct->circles[i].xy,ent->xy);
+      }
+      ent->xy = (vec2){.data = {0.0, 0.0}};
       if(ent->type & ENEMY && !(ent->type & DEAD)){
 	vec2 v2 = {.data = {0.0,0.0}};
 	if(player_ent != NULL)
@@ -216,11 +227,28 @@ void ld32_main(){
 	ent->xy = vec2_add(ent->xy, vec2_scale(v2,0.4));
       }
     }
+    printf("\n\n");
     for(int i = 0 ; i < state.trees_count; i++){
       for(int j = i + 1; j < state.trees_count; j++){
-	/*entity * enta = state.entities + i;
+
+	vec2 move_out = {.x =0.0, .y = 0.0};
+	bool collides = circ_tree_collision(state.trees + i, state.trees + j, &move_out);
+	if(false == collides)
+	  continue;
+	vec2 movea = vec2_scale(move_out,0.5);
+	if(isnan(movea.x) || isnan(movea.y))
+	  continue;
+	if(collides){
+	  vec2_print(move_out);
+	  printf("\n");
+	}
+	entity * enta = state.entities + i;
 	entity * entb = state.entities + j;
-	game_type ta = enta->type, tb = entb->type;
+
+	enta->xy = vec2_add(enta->xy, movea);
+	entb->xy = vec2_sub(entb->xy, movea);
+	
+	/*game_type ta = enta->type, tb = entb->type;
 	if((ta | tb) & DEAD)
 	  continue;
 	bool one_weapon = (ta | tb) & WEAPON;
@@ -279,13 +307,12 @@ void ld32_main(){
       logitem * itm = get_logoption(logitems,array_count(logitems),state.selected_idx);
       if(itm != NULL) itm->cb(NULL);
     }
+    
     if(player_ent != NULL && false == (player_ent->type & DEAD)){
       player_ent->xy = vec2_add(player_ent->xy,(vec2){.data = {gc.x,gc.y}});
-      
       if(weapon_ent != NULL)
 	weapon_ent->xy = vec2_add(player_ent->xy,weapon_offset);
     }
-    
     if(faulty) break;
   }
   renderer_unload(renderer);

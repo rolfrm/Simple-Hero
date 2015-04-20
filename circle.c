@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "../bitguy/linmath.h"
 #include "../bitguy/bitguy.h"
 #include "../bitguy/utils.h"
@@ -52,7 +53,7 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   return true;
 }
 
-bool circle_collision(circle * a, circle * b, vec2 * moveout){
+collision_info circle_collision(circle * a, circle * b, vec2 * moveout){
   vec2 d = vec2_sub(a->xy, b->xy);
   float l = vec2_len(d);
   float tsize = a->r + b->r;
@@ -60,67 +61,105 @@ bool circle_collision(circle * a, circle * b, vec2 * moveout){
   if(move > 0){
     vec2 nd = vec2_scale(vec2_normalize(d), move);
     *moveout = nd;
-    return true;
+    return COLLISION;
   }
-  return false;
+  return NO_COLLISION;
+}
+
+vec2 bigv(vec2 left_moveout, vec2 right_moveout){
+  if(fabs(left_moveout.x) < fabs(right_moveout.x)){
+    left_moveout.x = right_moveout.x;
+  }	
+  if(fabs(left_moveout.y) < fabs(right_moveout.y)){
+    left_moveout.y = right_moveout.y;
+  }
+  return left_moveout;
+}
+
+vec2 smallv(vec2 left_moveout, vec2 right_moveout){
+  if(fabs(left_moveout.x) > fabs(right_moveout.x)){
+    left_moveout.x = right_moveout.x;
+  }	
+  if(fabs(left_moveout.y) > fabs(right_moveout.y)){
+    left_moveout.y = right_moveout.y;
+  }
+  return left_moveout;
 }
 
 bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
-  bool check_col(int aidx, int bidx){
+  collision_info check_col(int aidx, int bidx, vec2 * moveout){
     circle_tree * ca = a->tree + aidx;
     circle_tree * cb = b->tree + bidx;
     if(ca->func == LEAF && cb->func == LEAF){
       return circle_collision(a->circles + ca->circle, b->circles + cb->circle, moveout);
     }
     if(ca->func == LEAF){
-      bool leftcollides = check_col(aidx,cb->left);
-      bool rightcollides = check_col(aidx,cb->right);
+      vec2 left_moveout = {.data = {0.0,0.0}};
+      vec2 right_moveout = {.data = {0.0,0.0}};
+      collision_info leftcollides = check_col(aidx,cb->left, &left_moveout);
+      collision_info rightcollides = check_col(aidx,cb->right, &right_moveout);
       switch(cb->func){
       case ADD:
-	return leftcollides || rightcollides;
+	*moveout = bigv(left_moveout,right_moveout);
+	return leftcollides | rightcollides;
       case ISEC:
-	return leftcollides && rightcollides;
-      case SUB:
-	return leftcollides && !rightcollides;
+	*moveout = smallv(left_moveout,right_moveout);
+	return leftcollides & rightcollides;
+      case SUB:	
+	return leftcollides & !rightcollides;
       default:
 	ERROR("unknown func");
 	return false;
       }
     }
-    if(ca->func == LEAF){
-      bool leftcollides = check_col(ca->left, bidx);
-      bool rightcollides = check_col(ca->right, bidx);
-      switch(cb->func){
+    if(cb->func == LEAF){
+      vec2 left_moveout = {.data = {0.0,0.0}};
+      vec2 right_moveout = {.data = {0.0,0.0}};
+      collision_info leftcollides = check_col(ca->left, bidx, &left_moveout);
+      collision_info rightcollides = check_col(ca->right, bidx, &right_moveout);
+      switch(ca->func){
       case ADD:
-	return leftcollides || rightcollides;
+	*moveout = bigv(left_moveout, right_moveout);
+	return leftcollides | rightcollides;
       case ISEC:
-	return leftcollides && rightcollides;
+	*moveout = smallv(left_moveout, right_moveout);
+	return leftcollides & rightcollides;
       case SUB:
-	return leftcollides && !rightcollides;
+	printf("%i %i\n",leftcollides,rightcollides);
+	vec2_print(left_moveout);vec2_print(right_moveout);printf("\n");
+	return 
+	  (leftcollides == 2 && rightcollides != 0)
+	  || (leftcollides == 1 && (rightcollides == 0 || rightcollides == 1 || rightcollides == 3));
       default:
-	ERROR("unknown func");
+	ERROR("unknown func %i",cb->func);
 	return false;
       }
     }
     // both funcs are NODEs
-    bool cll = check_col(ca->left,cb->left);
-    bool clr = check_col(ca->left,cb->right);
-    bool crl = check_col(ca->right,cb->left);
-    bool crr = check_col(ca->right,cb->right);
+    vec2 mll,mlr,mrl,mrr;
+    bool cll = check_col(ca->left, cb->left, &mll);
+    bool clr = check_col(ca->left, cb->right, &mlr);
+    bool crl = check_col(ca->right, cb->left, &mrl);
+    bool crr = check_col(ca->right, cb->right, &mrr);
     bool cl,cr;
+    vec2 ml,mr;
     // calc partial solutions
     switch(ca->func){
     case ADD:
       cl = cll | clr;
       cr = crl | crr;
+      ml = bigv(mll,mlr);
+      mr = bigv(mrl,mrr);
       break;
     case SUB:
-      cl = cll && !clr;
-      cr = crl && !crr;
+      cl = cll & !clr;
+      cr = crl & !crr;
       break;
     case ISEC:
-      cl = cll && clr;
-      cr = crl && crr;
+      cl = cll & clr;
+      cr = crl & crr;
+      ml = smallv(mll,mlr);
+      mr = smallv(mrl,mrr);
       break;
     default:
       ERROR("UNKNOWN FuNC");
@@ -128,19 +167,21 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
     }
     switch(cb->func){
     case ADD:
-      return cl || cr;
+      *moveout = bigv(ml,mr);
+      return cl | cr;
     case ISEC:
-      return cl && cr;
+      *moveout = smallv(ml,mr);
+      return cl & cr;
     case SUB:
-      return cl && !cr;
+      return cl & !cr;
     default:
-      ERROR("unknown func");
+      ERROR("unknown func %i",cb->func);
       return false;
     }
     ERROR("Should never be reached");
     return false;
   }
-  return check_col(0,0);
+  return check_col(0,0,moveout);
 }
 
 #include <stdio.h>

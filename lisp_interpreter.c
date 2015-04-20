@@ -118,6 +118,7 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
       // supports optional id. color, scenery.
       // requires a circle
       entity entity;
+      entity.xy = (vec2){.data = {0.0,0.0}};
       entity.id = NULL;
       entity.color = (color){.color = 0xFFFFFFFF};
       for(size_t i = 0; i < array_count(results); i++){

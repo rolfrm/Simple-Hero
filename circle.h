@@ -40,8 +40,17 @@ void circle_tform(circle * c, int count, mat3 t);
 int circle_tree_size(circle_tree * tr);
 int circle_tree_max_leaf(circle_tree * tr);
 
+typedef enum{
+  NO_COLLISION = 0,
+  COLLISION = 1,
+  A_HALF_INSIDE_B = 2,
+  A_INSIDE_B = 3,
+  B_HALF_INSIDE_A = 4,
+  B_INSIDE_A = 5
+}collision_info;
+
 // returns true in case of collision
-bool circle_collision(circle * a, circle * b, vec2 * moveout);
+collision_info circle_collision(circle * a, circle * b, vec2 * moveout);
 bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout);
 bool test_circle();
 
