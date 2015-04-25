@@ -128,8 +128,10 @@ void unload_level(game_state * state){
   state->trees = NULL;
   state->trees_count = 0;
 }
-
+void test_circle_collision_points();
 void ld32_main(){
+  test_circle_collision_points();
+  return;
   logd("start..\n");
   test_lisp_parser();
   
@@ -193,7 +195,7 @@ void ld32_main(){
 
   logitem item1 = {"rock on..",0,false, NULL};
   logitem item2 = {"[reload?]",2,true, reload_game};
-  logitem item3 = {"[really really quit?]",3,true, quitfcn};
+  logitem item3 = {"[quit]",3,true, quitfcn};
   logitem logitems[] = { item1, item2, item3};
   
   state.logitems = logitems;
@@ -209,7 +211,9 @@ void ld32_main(){
     for(int i = 0 ; i < state.trees_count; i++){
       entity * ent = state.entities + i;
       circ_tree * ct = state.trees + i;
-      int max_leaf = circle_tree_max_leaf(ct->tree);
+      if(ent == player_ent)
+	vec2_print(ct->circles[i].xy); printf("\n");
+      int max_leaf = circle_tree_max_leaf(ct->tree) + 1;
       printf(" -- ");
       vec2_print(ent->xy);
       printf(" -- \n");
@@ -227,11 +231,10 @@ void ld32_main(){
 	ent->xy = vec2_add(ent->xy, vec2_scale(v2,0.4));
       }
     }
-    printf("\n\n");
     for(int i = 0 ; i < state.trees_count; i++){
       for(int j = i + 1; j < state.trees_count; j++){
-
-	vec2 move_out = {.x =0.0, .y = 0.0};
+	
+	vec2 move_out = {.data = {0.0, 0.0}};
 	bool collides = circ_tree_collision(state.trees + i, state.trees + j, &move_out);
 	if(false == collides)
 	  continue;
@@ -239,6 +242,7 @@ void ld32_main(){
 	if(isnan(movea.x) || isnan(movea.y))
 	  continue;
 	if(collides){
+	  printf("collsion! ");
 	  vec2_print(move_out);
 	  printf("\n");
 	}

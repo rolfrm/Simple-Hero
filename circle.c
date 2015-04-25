@@ -55,35 +55,69 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
 
 collision_info circle_collision(circle * a, circle * b, vec2 * moveout){
   vec2 d = vec2_sub(a->xy, b->xy);
-  float l = vec2_len(d);
+  float sql = vec2_sqlen(d);
   float tsize = a->r + b->r;
-  float move =  tsize - l;
-  if(move > 0){
-    vec2 nd = vec2_scale(vec2_normalize(d), move);
+  float sqmove =  tsize * tsize - sql;
+  if(sqmove > 0){
+    float l = sqrtf(sql);
+    float move = tsize - l;
+    // if they are exactly ontop of eachother, we just take an arbitrary moveout.
+    vec2 nd = l == 0.0 ? (vec2){.data = {tsize,0}} : vec2_scale(vec2_normalize(d), move);
     *moveout = nd;
     return COLLISION;
   }
   return NO_COLLISION;
 }
 
-vec2 bigv(vec2 left_moveout, vec2 right_moveout){
-  if(fabs(left_moveout.x) < fabs(right_moveout.x)){
-    left_moveout.x = right_moveout.x;
-  }	
-  if(fabs(left_moveout.y) < fabs(right_moveout.y)){
-    left_moveout.y = right_moveout.y;
-  }
-  return left_moveout;
+vec2 vec2turn90(vec2 v){
+  return (vec2){.data = {-v.y, v.x}};
 }
 
-vec2 smallv(vec2 left_moveout, vec2 right_moveout){
-  if(fabs(left_moveout.x) > fabs(right_moveout.x)){
-    left_moveout.x = right_moveout.x;
-  }	
-  if(fabs(left_moveout.y) > fabs(right_moveout.y)){
-    left_moveout.y = right_moveout.y;
-  }
-  return left_moveout;
+bool circle_collision_points(circle * a, circle * b, vec2 *p1, vec2 * p2){
+  double tsize = a->r + b->r;
+  double tsize2 = tsize * tsize;
+  vec2 diff = vec2_sub(b->xy, a->xy);
+  double d2 = vec2_sqlen(diff);
+  if(tsize2 < d2) return false;
+  double d = sqrtf(d2);
+  double midd = a->r - (tsize - d) * (b->r)/(a->r + b->r);
+
+  vec2 middiff = vec2_add(a->xy,vec2_scale(diff, midd / d));
+  // calculate distance at x.
+  // r ^ 2 = x ^2 + y ^ 2 -> x = midd. r= ra
+  // sqrt(r ^ 2 - x ^ 2) = y
+  float dy = sqrt(a->r * a->r - midd * midd);
+  vec2 diff_unit = vec2turn90(vec2_scale(diff,dy / d));
+  *p1 = vec2_add(middiff,diff_unit);
+  *p2 = vec2_sub(middiff,diff_unit);
+  return true;
+}
+
+bool test_circle_collision_points(){
+  circle a,b;
+  a.xy = vec2mk(0.0,0.0);
+  a.r = 1.0;
+  b.xy = vec2mk(4.0,4.0);
+  b.r = 5.0;
+  vec2 p1,p2;
+  bool does_collide = circle_collision_points(&a, &b, &p1, &p2);
+  printf("collision %i: ", does_collide);vec2_print(p1);vec2_print(p2);printf("\n");
+  //TEST_ASSERT(feql(
+  //  TEST_ASSERT(false);
+  return true;
+}
+
+
+vec2 vec2min(vec2 a, vec2 b){
+  return vec2_sqlen(a) > vec2_sqlen(b) ? b : a;
+}
+
+vec2 vec2max(vec2 a, vec2 b){
+  return vec2_sqlen(a) < vec2_sqlen(b) ? b : a;
+}
+
+bool circ_tree_collision2(circ_tree * a, circ_tree * b, vec2 * moveout){
+  
 }
 
 bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
@@ -100,10 +134,10 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
       collision_info rightcollides = check_col(aidx,cb->right, &right_moveout);
       switch(cb->func){
       case ADD:
-	*moveout = bigv(left_moveout,right_moveout);
+	*moveout = vec2max(left_moveout,right_moveout);
 	return leftcollides | rightcollides;
       case ISEC:
-	*moveout = smallv(left_moveout,right_moveout);
+	*moveout = vec2min(left_moveout,right_moveout);
 	return leftcollides & rightcollides;
       case SUB:	
 	return leftcollides & !rightcollides;
@@ -119,14 +153,12 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
       collision_info rightcollides = check_col(ca->right, bidx, &right_moveout);
       switch(ca->func){
       case ADD:
-	*moveout = bigv(left_moveout, right_moveout);
+	*moveout = vec2max(left_moveout, right_moveout);
 	return leftcollides | rightcollides;
       case ISEC:
-	*moveout = smallv(left_moveout, right_moveout);
+	*moveout = vec2min(left_moveout, right_moveout);
 	return leftcollides & rightcollides;
       case SUB:
-	printf("%i %i\n",leftcollides,rightcollides);
-	vec2_print(left_moveout);vec2_print(right_moveout);printf("\n");
 	return 
 	  (leftcollides == 2 && rightcollides != 0)
 	  || (leftcollides == 1 && (rightcollides == 0 || rightcollides == 1 || rightcollides == 3));
@@ -135,21 +167,24 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
 	return false;
       }
     }
-    // both funcs are NODEs
+
+    // both are NODEs
+    // graph needs to be compared 4 ways
     vec2 mll,mlr,mrl,mrr;
     bool cll = check_col(ca->left, cb->left, &mll);
     bool clr = check_col(ca->left, cb->right, &mlr);
     bool crl = check_col(ca->right, cb->left, &mrl);
     bool crr = check_col(ca->right, cb->right, &mrr);
+    printf("%i %i %i %i\n",cll,clr,crl,crr);
     bool cl,cr;
     vec2 ml,mr;
     // calc partial solutions
-    switch(ca->func){
+    switch(cb->func){
     case ADD:
       cl = cll | clr;
       cr = crl | crr;
-      ml = bigv(mll,mlr);
-      mr = bigv(mrl,mrr);
+      ml = vec2max(mll,mlr);
+      mr = vec2max(mrl,mrr);
       break;
     case SUB:
       cl = cll & !clr;
@@ -158,19 +193,19 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
     case ISEC:
       cl = cll & clr;
       cr = crl & crr;
-      ml = smallv(mll,mlr);
-      mr = smallv(mrl,mrr);
+      ml = vec2min(mll,mlr);
+      mr = vec2min(mrl,mrr);
       break;
     default:
       ERROR("UNKNOWN FuNC");
       return false;
     }
-    switch(cb->func){
+    switch(ca->func){
     case ADD:
-      *moveout = bigv(ml,mr);
+      *moveout = vec2max(ml,mr);
       return cl | cr;
     case ISEC:
-      *moveout = smallv(ml,mr);
+      *moveout = vec2min(ml,mr);
       return cl & cr;
     case SUB:
       return cl & !cr;
@@ -189,10 +224,9 @@ bool circ_tree_collision(circ_tree * a, circ_tree * b, vec2 * moveout){
 void draw_circle_system(circle * circles,
 			circle_tree * ctree, 
 			u8 * out_image, int width, int height){
-  
-  void blit(circle_tree * ctree, u8 * buffer){
+  void blit(int offset, u8 * buffer){
     memset(buffer,0,width * height);
-    circle_tree nd = *ctree;
+    circle_tree nd = *(ctree + offset);
     if(nd.func == LEAF){
       circle circ = circles[nd.circle];
       int x = (int)circ.xy.x;
@@ -225,8 +259,8 @@ void draw_circle_system(circle * circles,
       }	  
     }else{
       u8 * buf2 = malloc(width * height);
-      blit(ctree + nd.left, buffer);
-      blit(ctree + nd.right, buf2);
+      blit(nd.left, buffer);
+      blit(nd.right, buf2);
       u128 * buf = (u128 *) buf2;
       u128 * end = buf + width * height / sizeof(u128);
       u128 * bufo = (u128 *) buffer;
@@ -249,29 +283,41 @@ void draw_circle_system(circle * circles,
       free(buf2);
     }
   }
-  blit(ctree,out_image);
+  blit(0,out_image);
 }
 
-int circle_tree_size(circle_tree * tr){
-  if(tr->func == LEAF)
-    return 1;
-  return 1 + circle_tree_size(tr + tr->left) 
-    + circle_tree_size(tr + tr->right);  
-}
-
-int circle_tree_max_leaf(circle_tree * tr){
-  if(tr->func == LEAF){
-    return tr->circle;
+int circle_tree_size(circle_tree * tree){
+ 
+  int check_size(int offset){
+    circle_tree * tr = tree + offset;
+    if(tr->func == LEAF)
+      return 1;
+    return 1 + check_size(tr->left) 
+      + check_size(tr->right);  
   }
-  return MAX(tr->left,tr->right);
+  return check_size(0);
+}
+
+int circle_tree_max_leaf(circle_tree * tree){
+  int check_size(int offset){
+    circle_tree * tr = tree + offset;
+    if(tr->func == LEAF){
+      return tr->circle;
+    }
+    int left = check_size(tr->left);
+    int right = check_size(tr->right);
+    return MAX(left,right);
+  }
+  return check_size(0);
 }
 
 circ_tree * sub_tree(circle_func fcn, circ_tree * a, circ_tree * b){
+
   int leftsize = circle_tree_size(a->tree);
   int leftleafs = circle_tree_max_leaf(a->tree) + 1;
   int rightsize = circle_tree_size(b->tree);
   int rightleafs = circle_tree_max_leaf(b->tree) + 1;
-  
+
   int circlesize = sizeof(circle) * (leftleafs  + rightleafs);
   int treesize =  sizeof(circle_tree) * (1 + leftsize + rightsize);
   int totsize = sizeof(circ_tree) + circlesize + treesize;
@@ -337,7 +383,10 @@ bool test_circle_sweep(){
     b.xy = vec2_add(b.xy,vec2_scale(dv,enter));
   }
   bool collides2 = circle_sweep(a,b,dv,&enter,&leave);
-  return collides && collides2 && enter == 0.0;
+  TEST_ASSERT(collides);
+  TEST_ASSERT(collides2);
+  TEST_ASSERT(feq(enter,0.0,0.0001));
+  return true;
 }
 
 void print_image(u8 * img, int w, int h){
@@ -353,12 +402,11 @@ bool test_draw_circle_system(){
   circle circles[] = {{{.data = {0/2,0}},10}
 		      ,{{.data = {0/2,0+ 4} },5}
 		      ,{{.data = {0/2,0}},3}};
-  circle_tree tree[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,1,2),circ_leaf(1),circ_leaf(2)};
+  circle_tree tree[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,3,4),circ_leaf(1),circ_leaf(2)};
   circle circles2[] = {{{.data = {0/2,0}},10}
 		       ,{{.data = {0/2,0 + 4}},5}
 		       ,{{.data = {0/2,0}},3}};
-  circle_tree tree2[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,1,2),circ_leaf(1),circ_leaf(2)};
-
+  circle_tree tree2[] = {circ_func(SUB,1,2),circ_leaf(0),circ_func(SUB,3,4),circ_leaf(1),circ_leaf(2)};
   mat3 m = mat3_2d_rotation(2.14);
   circle_tform(circles2,array_count(circles2), m);
   circle_tform(circles,array_count(circles), m);
@@ -384,7 +432,7 @@ void circle_bench_test(){
   circle circles[] = {{.xy = {.data ={w/2,w/2}}, .r = 3}
 		      ,{.xy = {.data = {w/2,w/2 }}, .r = 3}
 		      ,{.xy = {.data = {w/2,w/2 }}, .r = 3}};
-  circle_tree tree[] = {circ_func(ISEC,1,2), circ_leaf(0),circ_func(ADD,1,2), circ_leaf(1), circ_leaf(2)};
+  circle_tree tree[] = {circ_func(ISEC,1,2), circ_leaf(0),circ_func(ADD,3,4), circ_leaf(1), circ_leaf(2)};
   int size = circle_tree_size(tree);
   int leafs = circle_tree_max_leaf(tree);
   printf("size: %i\n",size);
@@ -394,17 +442,20 @@ void circle_bench_test(){
   free(image);
 }
 
-void circle_bench(){
+bool circle_bench(){
   u64 start = timestamp();
   circle_bench_test();
   u64 stop = timestamp();
   printf("Dt: %f s\n",1e-6 * (stop - start));
+  return true;
 }
 
 bool test_circle(){
-  circle_bench();
-  return test_circle_sweep() 
-    & test_draw_circle_system();
+  TEST(test_circle_collision_points);
+  TEST(circle_bench);
+  TEST(test_circle_sweep);
+  TEST(test_draw_circle_system);
+  return true;
 }
 
 

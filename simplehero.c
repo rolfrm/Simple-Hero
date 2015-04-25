@@ -45,6 +45,8 @@ bool test_circle();
 void circle_sg_main();
 void ld32_main();
 int main(){
+  TEST(test_circle);
+  TEST(test_utils);
   ld32_main();
   //circle_sg_main();
   return 0;
