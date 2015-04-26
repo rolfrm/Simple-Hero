@@ -74,19 +74,20 @@ vec2 vec2turn90(vec2 v){
 }
 
 bool circle_collision_points(circle * a, circle * b, vec2 *p1, vec2 * p2){
-  double tsize = a->r + b->r;
-  double tsize2 = tsize * tsize;
+  float tsize = a->r + b->r;
+  float tsize2 = tsize * tsize;
   vec2 diff = vec2_sub(b->xy, a->xy);
-  double d2 = vec2_sqlen(diff);
+  float d2 = vec2_sqlen(diff);
   if(tsize2 < d2) return false;
-  double d = sqrtf(d2);
-  double midd = a->r - (tsize - d) * (b->r)/(a->r + b->r);
+  float d = sqrtf(d2);
+  // this approximation is slightly wrong.. 
+  float midd = a->r - (tsize - d) * (b->r)/(a->r + b->r);
 
   vec2 middiff = vec2_add(a->xy,vec2_scale(diff, midd / d));
   // calculate distance at x.
   // r ^ 2 = x ^2 + y ^ 2 -> x = midd. r= ra
   // sqrt(r ^ 2 - x ^ 2) = y
-  float dy = sqrt(a->r * a->r - midd * midd);
+  float dy = sqrtf(a->r * a->r - midd * midd);
   vec2 diff_unit = vec2turn90(vec2_scale(diff,dy / d));
   *p1 = vec2_add(middiff,diff_unit);
   *p2 = vec2_sub(middiff,diff_unit);
@@ -101,9 +102,43 @@ bool test_circle_collision_points(){
   b.r = 5.0;
   vec2 p1,p2;
   bool does_collide = circle_collision_points(&a, &b, &p1, &p2);
+  TEST_ASSERT(does_collide);
   printf("collision %i: ", does_collide);vec2_print(p1);vec2_print(p2);printf("\n");
-  //TEST_ASSERT(feql(
-  //  TEST_ASSERT(false);
+  // Values found by testing
+  // Order is not important.
+  if(false == feq(p1.x,0.0, 0.01)){
+    vec2 tmp = p1;
+    p1 = p2;
+    p2 = tmp;
+  }
+
+  TEST_ASSERT(feq(p1.x, 0.0, 0.01));
+  TEST_ASSERT(feq(p1.y, 1.0, 0.01));
+  TEST_ASSERT(feq(p2.x, 1.0, 0.01));
+  TEST_ASSERT(feq(p2.y, 0.0, 0.01));
+
+  float offx = 0.0;
+  float offy = 0.0;
+
+  a.xy.x += offx;
+  a.xy.y += offy;
+  b.xy.x += offx;
+  b.xy.y += offy;
+  vec2_print(p1);vec2_print(p2);printf("<p1p2 \n");
+  does_collide = circle_collision_points(&b,&a, &p1, &p2);
+  TEST_ASSERT(does_collide);
+
+  if(false == feq(p1.x,1.0, 0.01)){
+    vec2 tmp = p1;
+    p1 = p2;
+    p2 = tmp;
+  }
+  vec2_print(p1);vec2_print(p2);printf("<p1p2 \n");
+  TEST_ASSERT(feq(p1.x, offx + 0.0, 0.01));
+  TEST_ASSERT(feq(p1.y, offy + 1.0, 0.01));
+  TEST_ASSERT(feq(p2.x, offx + 1.0, 0.01));
+  TEST_ASSERT(feq(p2.y, offy + 0.0, 0.01));
+
   return true;
 }
 
