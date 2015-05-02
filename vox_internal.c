@@ -95,8 +95,6 @@ voxtree * resize_ctx(voxtree * vt, voxtree_ctx * ctx, size_t new_size){
   return (voxtree *) (((u8 *)ctx->tree) + offset);
 }
 
-
-#include <stdio.h>
 voxtree * tree_resize_node(voxtree * vt, size_t new_size, voxtree_ctx * ctx){
   voxtree * next = tree_skip(vt);  
   size_t current_size = tree_dist(next, vt);
