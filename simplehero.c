@@ -16,7 +16,7 @@
 #include <stdarg.h>
 
 #include "vox.h"
-
+#include "vox_raster.h"
 const char * allowed_errors[] ={
   "Unknown touch device",
   "Invalid renderer"
@@ -50,6 +50,7 @@ int main(){
   //TEST(test_circle);
   TEST(test_utils);
   TEST(vox_test);
+  TEST(vox_raster_test);
   //  ld32_main();
   //circle_sg_main();
   return 0;
