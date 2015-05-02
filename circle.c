@@ -9,6 +9,28 @@
 #include "color.h"
 #include "circle.h"
 
+typedef struct{
+  //root 1 and 2.
+  float r1, r2;
+  // if the equation has real(not complex) roots.
+  bool real_roots;
+}qroots;
+
+// Solves a quadratic equation of the form
+// a x^2 + b x + c = 0
+qroots solve_quadratic(float a, float b, float c){
+  static qroots blank_roots = {0.0,0.0,0.0};
+  float desc = b * b - 4 * a * c;
+  qroots out = blank_roots;
+  out.real_roots = desc > 0;
+  if(out.real_roots){
+    float b4ac = sqrt(desc);
+    out.r1 = (-b + b4ac) / (2.0 * a);
+    out.r2 = (-b - b4ac) / (2.0 * a);    
+  }
+  return out;
+}
+
 // Two circles a,b. dv is the speed of b relative to a. 
 // Out_tenter and out_tleave is time when a and b intersects, 
 // if they do at all if not these values will not be set..
@@ -36,6 +58,7 @@ bool circle_sweep(circle a, circle b, vec2 dv, float * out_tenter, float * out_t
   float sb = 2.0 * vec2_mul_inner(dv,o);
   float sa = vec2_mul_inner(dv, dv);
   float sc = vec2_mul_inner(o,o) - totr * totr;
+
   float desc = sb * sb - 4 * sa * sc;
   // no real roots -> no collision, ever.
   if(desc < 0) return false; 
@@ -91,8 +114,34 @@ bool circle_collision_points(circle * a, circle * b, vec2 *p1, vec2 * p2){
   vec2 diff_unit = vec2turn90(vec2_scale(diff,dy / d));
   *p1 = vec2_add(middiff,diff_unit);
   *p2 = vec2_sub(middiff,diff_unit);
+
   return true;
 }
+
+bool test_quadratic_solve(){
+  qroots r2 = solve_quadratic(1,2,-3);
+  printf("test qroots: %f %f\n",r2.r1,r2.r2);
+  TEST_ASSERT(feq(r2.r1,1,0.001) && feq(r2.r2,-3,0.001));
+  return true;
+}
+
+bool circle_collision_points2(circle * a, circle * b, vec2 *p1, vec2 * p2){
+  float x1 = a->xy.x, y1 = a->xy.y, x2 = b->xy.x, y2 = b->xy.y;
+  float A = -(2 * x2 + 2 * x1) / (2 * y2 - 2 * y1);
+  float B = (x1 * x1 + y1 * y1 + y2 * y2 + x2 * x2) / (2 * y2 - 2 * y1);
+
+  float v1 = (1 + A * A);
+  float v2 = (2 * A * B - 2 * y1 * A - 2 * x1);
+  float v3 = (x1 * x1 + B * B + y1 * y1 * 2 * y1 * B);
+  qroots r = solve_quadratic(v1,v2,v3);
+  printf("qroots 2!: %f %f %f |  %f %f\n",v1,v2,v3,r.r1,r.r2);
+  
+  if(r.real_roots){
+    
+  }
+  return true;
+}
+
 
 bool test_circle_collision_points(){
   circle a,b;
@@ -102,6 +151,7 @@ bool test_circle_collision_points(){
   b.r = 5.0;
   vec2 p1,p2;
   bool does_collide = circle_collision_points(&a, &b, &p1, &p2);
+  circle_collision_points2(&a, &b, &p1, &p2);
   TEST_ASSERT(does_collide);
   printf("collision %i: ", does_collide);vec2_print(p1);vec2_print(p2);printf("\n");
   // Values found by testing
@@ -486,6 +536,7 @@ bool circle_bench(){
 }
 
 bool test_circle(){
+  TEST(test_quadratic_solve);
   TEST(test_circle_collision_points);
   TEST(circle_bench);
   TEST(test_circle_sweep);
