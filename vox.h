@@ -1,1 +1,1 @@
-bool voxtree_test();
+bool vox_test();
