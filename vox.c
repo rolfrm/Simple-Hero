@@ -12,6 +12,7 @@
 #include "../bitguy/utils.h"
 #include "../bitguy/linmath.h"
 
+#include "vox.h"
 
 typedef struct {
   bool is_leaf;
@@ -28,15 +29,15 @@ int tree_size(voxtree * tree){
 }
 
 bool tree_size_test(){
-  u8 tree = [1, 0,  
-	     0, 255,  
-	     0, 0,  
-	     0, 0,  
-	     0, 0,  
-	     0, 255,  
-	     0, 255, 
-	     0, 255, 
-	     0, 255];
+  u8 tree[] = {1, 0,  
+	       0, 255,  
+	       0, 0,  
+	       0, 0,  
+	       0, 0,  
+	       0, 255,  
+	       0, 255, 
+	       0, 255, 
+	       0, 255};
   TEST_ASSERT(tree_size((voxtree *) tree) == 5);
   return true;
 }
