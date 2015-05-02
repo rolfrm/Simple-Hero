@@ -40,6 +40,7 @@ voxtree * tree_node_to_leaf(voxtree * vt, voxtree_ctx * ctx);
 // Inserts a whole tree into the node. Cannot be from the tree itself.
 voxtree * tree_insert_node(voxtree * node, voxtree * node_data, voxtree_ctx * ctx);
 
+
 // test
 // loads a simple tree with the size of 17 cells
 voxtree * tree_make_test();

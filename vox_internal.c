@@ -46,16 +46,21 @@ voxtree * tree_skip(voxtree * vt){
 }
 
 struct _voxtree_ctx{
+  // Tree data. Might change with realloc when capacity changes.
   voxtree * tree;
+  // Size in bytes
   size_t size;
+  // Capacity in bytes
   size_t capacity;
 };
 
 voxtree_ctx * voxtree_ctx_make(size_t capacity){
   voxtree_ctx * ctx = malloc(sizeof(ctx));
   ctx->tree = malloc(capacity);
-  ctx->tree->is_node = 1;
+  ctx->tree->is_node = 0;
   ctx->tree->color = 0;
+  ctx->size = 2;
+  ctx->capacity = capacity;
   return ctx;
 }
 
@@ -90,6 +95,8 @@ voxtree * resize_ctx(voxtree * vt, voxtree_ctx * ctx, size_t new_size){
   return (voxtree *) (((u8 *)ctx->tree) + offset);
 }
 
+
+#include <stdio.h>
 voxtree * tree_resize_node(voxtree * vt, size_t new_size, voxtree_ctx * ctx){
   voxtree * next = tree_skip(vt);  
   size_t current_size = tree_dist(next, vt);
@@ -106,6 +113,7 @@ voxtree * tree_resize_node(voxtree * vt, size_t new_size, voxtree_ctx * ctx){
   u8 * start = ((u8 *) vt) + current_size;
   u8 * begin = ((u8 *) vt);
   size_t cnt = ctx->size - (start - begin);
+
   memmove(start + size_change, start, cnt);
   ctx->size += size_change;
   return vt;
