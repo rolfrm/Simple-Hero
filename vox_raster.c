@@ -41,11 +41,11 @@ void vox_raster_isometric(voxtree * vt, vec3 cam_position, u8 * image, u32 width
       // the diagonals are (1,0,1) and (0,1,0) for y
       // (1, 0, 0) and (0, 0, 1) for x
       // transforming these into view (pixel) space will give extremities.
-      vec3 cr = vec3_sub(position, cam_position);
+      vec3 cr = vec3_sub(cam_position, position);
       vec3 v1 = cr;
       vec3 v2 = cr;
-      v1.x += size;
-      v1.z += size;
+      v1.x -= size;
+      v1.z -= size;
       v2.y += size; 
       vec3_print(v1);vec3_print(v2);logd("\n");
       
