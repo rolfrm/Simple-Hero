@@ -31,8 +31,20 @@ vec3 idx_to_vec3(u8 idx){
 #include <stdio.h>
 void vox_raster_isometric(voxtree * vt, vec3 cam_position, u8 * image, u32 width, u32 height){
   // the viewing vector is (-1, -1, -1)
+  static float sqrt2 = sqrtf(2);
+  static float sqrt3 = sqrtf(2);
   memset(image, 0, width * height);
-  vec3 position = vec3mk(1.0,1.0,1.0);
+  vec3 viewv = vec3_normalize(vec3mk(-1.0, -1.0, -1.0));
+  vec2 screen_pos(vec3 p){
+    vec3 pr = vec3_sub(p, cam_position);
+    float d = vec3_mul_inner(pr, viewv);
+    vec3 pc = vec3_sub(p, vec3_scale(viewv, d));
+    pc = vec3_sub(pc,cam_position);
+    float t = pc.x / sqrt2;
+    float s = pc.y / -sqrt2;
+    return vec2mk(t,s);
+  }
+	  
   void blit(voxtree * subtree, vec3 position, float size){
     if(tree_is_leaf(subtree)){
       // since viewing vector is (-1, -1, -1), y is up.
@@ -40,14 +52,13 @@ void vox_raster_isometric(voxtree * vt, vec3 cam_position, u8 * image, u32 width
       // the furthest corner of any rectangle is 0,0,0. the closest is 1,1,1
       // the diagonals are (1,0,1) and (0,1,0) for y
       // (1, 0, 0) and (0, 0, 1) for x
-      // transforming these into view (pixel) space will give extremities.
-      vec3 cr = vec3_sub(position, cam_position);
-      vec3 v1 = cr;
-      vec3 v2 = cr;
-      v1.x += size;
-      v1.z += size;
-      v2.y += size; 
-      vec3_print(v1);vec3_print(v2);logd("\n");
+      // transforming these into view (pixel) space will give
+      // extremities.
+      for(int i = 0; i < 8; i++){
+	vec3 p = vec3mk(1.0,0.0,1.0);//idx_to_vec3(i);//
+	vec2 sp = screen_pos(p);
+	vec2_print(sp);logd("\n");
+      }
       
     }else{
       for(i8 i = 7; i >= 0; i--){
