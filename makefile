@@ -1,14 +1,14 @@
 OPT = -g
-SOURCES =  simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c
+SOURCES =  simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c lisp_compiler.c
 CC = gcc
 TARGET = run
 OBJECTS =$(SOURCES:.c=.o)
-LDFLAGS=-L. -L../libconcurrency-read-only/  $(OPT) -Wextra #setrlimit on linux 
-LIBS= -lSDL2 -lSDL2_ttf -lSDL2_image -lSDL2_gfx -lGL -lm -lpthread
-CFLAGS =  -I../libconcurrency-read-only/libconcurrency/ -std=c11 -c $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0  -g3 -O0
+LDFLAGS=-ldl -L. -L../libconcurrency-read-only/  $(OPT) -Wextra  #setrlimit on linux 
+LIBS= -ldl -lSDL2 -lSDL2_ttf -lSDL2_image -lSDL2_gfx -lGL -lm -lpthread 
+CFLAGS = -Itcc -I../libconcurrency-read-only/libconcurrency/ -std=c11 -c $(OPT) -Wall -Wextra -Werror=implicit-function-declaration -Wformat=0  -g3 -O0
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) tcc/libtcc.a -ldl -o $@
 
 .c.o: $(HEADERS)
 	$(CC) $(CFLAGS) $< -o $@ -MMD -MF $@.depends

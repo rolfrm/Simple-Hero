@@ -1,6 +1,6 @@
 // requires nothing.
 typedef enum{
-  EXPRESSION = 5,
+  EXPR = 5,
   VALUE = 6
 }expr_type;
 
@@ -15,6 +15,7 @@ typedef enum{
   COMMENT = 4,
   // Symbols are used first in functions.
   SYMBOL = 5,
+  VOID = 6,
   VALUE_TYPE_LAST
 }value_type;
 
@@ -24,23 +25,23 @@ typedef struct{
   int strln;
 }value_expr;
 
-typedef struct _expression expression;
+typedef struct _expr expr;
 
 typedef struct{
   value_expr name;
-  expression * sub_expressions;
-  int sub_expression_count;  
-}sub_expression_expr;
+  expr * sub_exprs;
+  int sub_expr_count;  
+}sub_expr;
 
-struct _expression{
+struct _expr{
   expr_type type;
   union{
-    sub_expression_expr sub_expression;
+    sub_expr sub_expr;
     value_expr value;
   };
 };
 
-char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count);
-void delete_expression(expression * expr);
-void print_expression(expression * expr);
+char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count);
+void delete_expr(expr * expr);
+void print_expr(expr * expr);
 int test_lisp_parser();

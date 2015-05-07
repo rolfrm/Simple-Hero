@@ -103,9 +103,9 @@ char * parse_value(char * code, value_expr * val){
 
   return NULL;
 }
-char * parse_expression(char * code, expression * out_expr);
+char * parse_expr(char * code, expr * out_expr);
 
-char * parse_subexpression(char * code, sub_expression_expr * subexpr){
+char * parse_subexpr(char * code, sub_expr * subexpr){
   if(code[0] != '(')
     return NULL;
   code++;
@@ -115,20 +115,20 @@ char * parse_subexpression(char * code, sub_expression_expr * subexpr){
   if(code == NULL)
     return NULL;
   subexpr->name = sym;
-  subexpr->sub_expressions = NULL;
-  subexpr->sub_expression_count = 0;
-  expression exprs[10];
+  subexpr->sub_exprs = NULL;
+  subexpr->sub_expr_count = 0;
+  expr exprs[10];
   int len = 0;
  next_part:
   code = take_while(code,is_whitespace);
   if(*code == ')'){
-    subexpr->sub_expression_count = len;
-    subexpr->sub_expressions = malloc(len * sizeof(expression));
-    memcpy(subexpr->sub_expressions, exprs, len * sizeof(expression));
+    subexpr->sub_expr_count = len;
+    subexpr->sub_exprs = malloc(len * sizeof(expr));
+    memcpy(subexpr->sub_exprs, exprs, len * sizeof(expr));
 
     return code + 1;  
   }
-  code = parse_expression(code, exprs + len);
+  code = parse_expr(code, exprs + len);
   if(code == NULL)
     return NULL;
   len++;
@@ -136,14 +136,14 @@ char * parse_subexpression(char * code, sub_expression_expr * subexpr){
 
 }
 
-char * parse_expression(char * code, expression * out_expr){
+char * parse_expr(char * code, expr * out_expr){
   code = take_while(code,is_whitespace);
-  {// parse subexpression.
-    sub_expression_expr subexpr;
-    char * next = parse_subexpression(code,&subexpr);
+  {// parse subexpr.
+    sub_expr subexpr;
+    char * next = parse_subexpr(code,&subexpr);
     if(next != NULL){
-      out_expr->type = EXPRESSION;
-      out_expr->sub_expression = subexpr;
+      out_expr->type = EXPR;
+      out_expr->sub_expr = subexpr;
       return next;
     }
   }
@@ -161,13 +161,13 @@ char * parse_expression(char * code, expression * out_expr){
 }
 
 // not implemented yet
-void delete_expression(expression * expr){
-  if(expr->type == EXPRESSION){
-    sub_expression_expr sexpr = expr->sub_expression;
-    for(int i = 0 ; i < sexpr.sub_expression_count; i++){
-      delete_expression(sexpr.sub_expressions + i);
+void delete_expr(expr * expr){
+  if(expr->type == EXPR){
+    sub_expr sexpr = expr->sub_expr;
+    for(int i = 0 ; i < sexpr.sub_expr_count; i++){
+      delete_expr(sexpr.sub_exprs + i);
     }
-    free(sexpr.sub_expressions);
+    free(sexpr.sub_exprs);
   }
 }
 
@@ -182,17 +182,17 @@ char * value_type2str(value_type vt){
   }
 }
 
-void print_expression(expression * expr){
+void print_expr(expr * expr1){
 
-  void iprint(expression * expr, int indent){
-    value_expr value = expr->value;
-    sub_expression_expr subexpr = expr->sub_expression;
+  void iprint(expr * expr2, int indent){
+    value_expr value = expr2->value;
+    sub_expr subexpr = expr2->sub_expr;
     
-    switch(expr->type){
-    case EXPRESSION:
+    switch(expr2->type){
+    case EXPR:
       printf("%-7s: %*s %.*s \n","expr", indent, " ", value.strln, subexpr.name.value);
-      for(int i = 0 ; i < subexpr.sub_expression_count; i++){
-	iprint(subexpr.sub_expressions + i,indent + 1);
+      for(int i = 0 ; i < subexpr.sub_expr_count; i++){
+	iprint(subexpr.sub_exprs + i,indent + 1);
       }
       break;
     case VALUE:
@@ -200,15 +200,15 @@ void print_expression(expression * expr){
       break;
     }
   }
-  iprint(expr,0);
+  iprint(expr1,0);
 }
 
 
-char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count){
+char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
   for(int i = 0 ; i < *out_exprs_count; i++){
     code = take_while(code, is_whitespace);
 
-    char * cn = parse_expression(code, out_exprs + i);
+    char * cn = parse_expr(code, out_exprs + i);
     if(cn == NULL){
       *out_exprs_count = i;
       return NULL;
@@ -223,16 +223,16 @@ char * lisp_parse(char * code, expression * out_exprs, int * out_exprs_count){
 }
 
 int test_lisp_parser(){
-  expression exprs[10];
+  expr exprs[10];
   int exprs_count = 10;
 
   lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
   
   //for(int i = 0; i < exprs_count; i++)
-  //  print_expression(exprs + i);
-  printf("lisp expressions %i\n", exprs_count);
+  //  print_expr(exprs + i);
+  printf("lisp exprs %i\n", exprs_count);
   for(int i = 0; i < exprs_count; i++)
-    delete_expression(exprs + i);
+    delete_expr(exprs + i);
   printf("gets here\n");
   return 0;
 }

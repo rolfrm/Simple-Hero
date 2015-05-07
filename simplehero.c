@@ -44,9 +44,12 @@ void _error(const char * file, int line, const char * str, ...){
 
 void run_ai(ccdispatch * dispatcher, game_state * gs);
 bool test_circle();
+bool lisp_compiler_test();
 void circle_sg_main();
 void ld32_main();
 int main(){
+  TEST(lisp_compiler_test);
+  return 0;
   //TEST(test_circle);
   TEST(test_utils);
   TEST(vox_test);

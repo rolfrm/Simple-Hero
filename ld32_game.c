@@ -61,7 +61,7 @@ void load_level(FILE * level_stream, game_state * state){
   entity * entities = NULL;
   int entity_count = 0;
   while(end_of_parse != NULL && *end_of_parse != 0){
-    expression exprs[64];
+    expr exprs[64];
     int exprs_cnt = array_count(exprs);
   
     end_of_parse = lisp_parse(end_of_parse, exprs, &exprs_cnt);
@@ -73,7 +73,7 @@ void load_level(FILE * level_stream, game_state * state){
 	ERROR("Error intrepreting results!");
 	return;
       }
-      delete_expression(exprs + i);
+      delete_expr(exprs + i);
     }
 
     // load entities

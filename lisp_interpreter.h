@@ -22,5 +22,5 @@ enum{
 };
 
 // results has to be cleaned manually using lisp_result_delete;
-void eval_expr(expression * expr, bool just_check_types, lisp_result * result);
+void eval_expr(expr * expr, bool just_check_types, lisp_result * result);
 void lisp_result_delete(lisp_result * r);

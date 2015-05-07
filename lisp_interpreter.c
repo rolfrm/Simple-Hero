@@ -45,7 +45,7 @@ void lisp_result_delete(lisp_result * r){
   }
 }
 
-void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
+void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
   result->typeid = TYPEID_ERROR; // In case noone sets it.
   if(expr->type == VALUE){
     value_expr val = expr->value;
@@ -66,13 +66,13 @@ void eval_expr(expression * expr, bool just_check_types, lisp_result * result){
     default:
       ERROR("Unsupported val type: %i", val.type);
     }
-  }else if(expr->type == EXPRESSION){
+  }else if(expr->type == EXPR){
     
-    sub_expression_expr sexpr = expr->sub_expression;
+    sub_expr sexpr = expr->sub_expr;
     value_expr name = sexpr.name;
-    lisp_result results[sexpr.sub_expression_count];
-    for(int i = 0; i < sexpr.sub_expression_count; i++){
-      eval_expr(sexpr.sub_expressions + i, just_check_types, results + i);
+    lisp_result results[sexpr.sub_expr_count];
+    for(int i = 0; i < sexpr.sub_expr_count; i++){
+      eval_expr(sexpr.sub_exprs + i, just_check_types, results + i);
       if(results[i].typeid == TYPEID_ERROR){
 	ERROR("ERROR matching type at '%.*s' arg %i ",name.strln, name.value, i);
       }
