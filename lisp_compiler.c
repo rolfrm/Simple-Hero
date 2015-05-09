@@ -13,6 +13,11 @@ void tccerror(void * opaque, const char * msg){
   printf("%s\n",msg);
 }
 
+
+typedef struct{
+  
+}scope_vars;
+
 typedef struct{
   char * buffer;
   char * buffer_ptr;
@@ -67,29 +72,41 @@ static void compile_iexpr(comp_state * s, expr expr1){
     compile_sexpr(s, expr1.sub_expr);
   }
 }
+  
 
 void compile_expr(expr * e, void * lisp_state){
+  static bool compiler_loaded = false;
+  static TCCState * tccs;
+  static int exprcnt = 0;
+  if(!compiler_loaded){
+    tccs = tcc_new();
+    tcc_set_lib_path(tccs,".");
+    tcc_set_error_func(tccs, NULL, tccerror);
+    tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
+    compiler_loaded = true;
+  }
+  exprcnt++;
   char * buf = malloc(1000);
-
+  
   comp_state s = comp_state_make(buf);
-  inscribe(&s, "void test() { ");
+  char header[100];
+  sprintf(header,"void test%i() {",exprcnt);
+  inscribe(&s, header);
   compile_iexpr(&s, *e);
   inscribe(&s, ";");
   inscribe(&s, "}");
-  //printf("c code: %s\n",s.buffer);
+  printf("c code: %s\n",s.buffer);
 
-  TCCState * tccs = tcc_new();
-  tcc_set_lib_path(tccs,".");
-  tcc_set_error_func(tccs, NULL, tccerror);
-  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
+  
   int ok = tcc_compile_string(tccs,s.buffer);
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
   printf("size: %i\n", size);
-  void (* fcn) () = tcc_get_symbol(tccs, "test");
+  sprintf(header,"test%i",exprcnt);
+  void (* fcn) () = tcc_get_symbol(tccs, header);
 
   if(fcn != NULL)
     fcn();
-  tcc_delete(tccs);
+  //tcc_delete(tccs);
   free(buf);
 }
 
