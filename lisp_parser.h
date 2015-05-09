@@ -16,6 +16,7 @@ typedef enum{
   // Symbols are used first in functions.
   SYMBOL = 5,
   VOID = 6,
+  CVARADIC = 7, // c: ...
   VALUE_TYPE_LAST
 }value_type;
 
