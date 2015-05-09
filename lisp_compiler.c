@@ -172,13 +172,14 @@ type_def get_type_def_def(){
 	umembers[0].name = "cenum";
 
       }
+
       {//simple
 	static type_def simple_def;
 	static decl members[2];
 	simple_def.kind = STRUCT;
 	simple_def.cstruct.name=NULL;
 	simple_def.cstruct.members = members;
-	simple_def.cstruct.cnt = 0;//array_count(members);
+	simple_def.cstruct.cnt = array_count(members);
 
 	members[0].name ="name";
 	members[0].type = char_ptr_def;
@@ -187,6 +188,8 @@ type_def get_type_def_def(){
 	
 	umembers[1].type = simple_def;
 	umembers[1].name = "simple";
+	printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
+
       }
 
       {//fcn
@@ -241,6 +244,7 @@ type_def get_type_def_def(){
     }
   }
 
+  printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
   return type_def_def;
 }
 
@@ -263,37 +267,40 @@ struct _compiler_state{
   size_t var_cnt;
 };
 
-void print_type(type_def type, int ind){
+void print_type(type_def type, int ind, bool is_decl){
   switch(type.kind){
   case SIMPLE:
-    printf(" %s",type.simple.name);
+    printf("%*s %s ",ind, " ",type.simple.name);
     break;
   case STRUCT:
-    printf("struct ");
-    if(type.cstruct.name != NULL){
-      printf("%s ", type.cstruct.name);
+    if(is_decl){
+      printf("%*s %s ",ind, "  ", type.cstruct.name);
+    }else{
+      printf("%*s struct {\n",ind, "  ");
+      
+      for(i64 i = 0; i < type.cstruct.cnt; i++){
+	print_type(type.cstruct.members[i].type, ind + 1, false);
+	if(type.cstruct.members[i].name != NULL)
+	  printf("%s;\n",type.cstruct.members[i].name);
+      }
+      printf("%*s }",ind, "  "); 
     }
-    printf("{\n");
-    for(i64 i = 0; i < type.cstruct.cnt; i++){
-      print_type(type.cstruct.members[i].type, ind + 1);
-      if(type.cstruct.members[i].name != NULL)
-	printf(" %s;\n", type.cstruct.members[i].name);
-    }
-    printf("};\n");
     break;
   case POINTER:
-    print_type(*(type.ptr.inner), ind);
-    printf(" * ");
+    print_type(*(type.ptr.inner), ind, true);
+    printf("* ");
     break;
   case ENUM:
-    printf("%s ",type.cenum.enum_name);
+    printf("%*s %s ",ind, "  ",type.cenum.enum_name);
     break;
   case UNION:
-    printf("union {\n");
+    printf("%*s union {\n",ind, "  ");
+
     for(i64 i = 0; i < type.cunion.cnt; i++){
-      print_type(type.cunion.members[i].type, ind + 1);
+      print_type(type.cunion.members[i].type, ind + 1, false);
       printf(" %s;\n", type.cunion.members[i].name);
     }
+    printf("%*s }",ind, "  ");
     break;
   default:
     printf("not implemented %i", type.kind);
@@ -303,7 +310,7 @@ void print_type(type_def type, int ind){
 void print_compiler_state(compiler_state * c){
   printf("Compiler state: \n printing types:\n");
   for(size_t i = 0; i < c->type_cnt; i++){
-    print_type(c->type[i], 0 );
+    print_type(c->type[i], 0 , false);
     printf("\n");
   }
   printf("printing variables\n");
@@ -474,7 +481,9 @@ bool lisp_compiler_test(){
   TEST_ASSERT(list[4] = 4);
 
   type_def def = get_type_def_def();
-  print_type(def, 0); 
+
+  //return true;
+  print_type(def, 0, false); 
   return true;
   char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
   UNUSED(base_code);
