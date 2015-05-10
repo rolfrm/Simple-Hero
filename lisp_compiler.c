@@ -19,8 +19,8 @@ typedef enum {
   TYPEDEF = 6
 }  type_def_kind;
 
+struct _type_def;
 typedef struct _type_def type_def;
-
 struct _decl;
 typedef struct _decl decl;
 
@@ -86,7 +86,13 @@ type_def make_simple(char * name, char * cname){
   return def;
 }
 
-type_def get_type_def_def(){
+typedef struct _basic_defs{
+  type_def type_def_def;
+  type_def decl_def;
+  type_def type_def_kind_def;
+}basic_defs;
+
+basic_defs get_type_def_def(){
   // a snake biting its own tail.. needed for reflection
   static type_def char_def;
   char_def = make_simple("char", "char");
@@ -105,16 +111,21 @@ type_def get_type_def_def(){
   i64_ptr_def.ptr.inner = &i64_def;  
 
   static type_def type_def_def;
- 
+  type_def_def.kind = TYPEDEF;
+  type_def_def.ctypedef.name = "type_def";
+
   static type_def type_def_kind_def;
-  {
-    type_def_kind_def.kind = ENUM;
-    type_def_kind_def.cenum.enum_name = "type_def_kind";
+  { // kind enum
+    static type_def type_def_kind_def_inner;
+    type_def_kind_def.kind = TYPEDEF;
+    type_def_kind_def.ctypedef.inner = &type_def_kind_def_inner;
+    type_def_kind_def.ctypedef.name = "type_def_kind";
     static char * kindnames[] = {"SIMPLE", "FUNCTION", "POINTER", "STRUCT", "UNION", "ENUM"};
     static i64 kindvalues[] = {SIMPLE, FUNCTION, POINTER, STRUCT, UNION, ENUM};
-    type_def_kind_def.cenum.cnt = array_count(kindnames);
-    type_def_kind_def.cenum.names = kindnames;
-    type_def_kind_def.cenum.values = kindvalues;
+    type_def_kind_def_inner.kind = ENUM;
+    type_def_kind_def_inner.cenum.cnt = array_count(kindnames);
+    type_def_kind_def_inner.cenum.names = kindnames;
+    type_def_kind_def_inner.cenum.values = kindvalues;
   }
   
   static type_def type_def_ptr_def;
@@ -122,29 +133,36 @@ type_def get_type_def_def(){
   type_def_ptr_def.ptr.inner = &type_def_def;  
   static type_def decl_def;
   {
-    decl members[2];
+    static decl members[2];
+    static type_def dclinner;
     members[0].name = "name";
     members[0].type = char_ptr_def;
     members[1].name = "type";
-    members[1].type = type_def_def;
+    members[1].type = type_def_ptr_def;
      
-    decl_def.kind = STRUCT;
-    decl_def.cstruct.name = "decl";
-    decl_def.cstruct.members = members;
-    decl_def.cstruct.cnt = array_count(members);
+    dclinner.kind = STRUCT;
+    dclinner.cstruct.name = "_decl";
+    dclinner.cstruct.members = members;
+    dclinner.cstruct.cnt = array_count(members);
+    
+    decl_def.kind = TYPEDEF;
+    decl_def.ctypedef.name = "decl";
+    decl_def.ctypedef.inner = &dclinner;
   }
   
   static type_def decl_ptr_def;
   decl_ptr_def.kind = POINTER;
   decl_ptr_def.ptr.inner = &decl_def;
-
-  type_def_def.kind = STRUCT;
-  type_def_def.cstruct.name = "type_def";
+  
   { //type_def struct members:
+    static type_def itype_def_def;
+    type_def_def.ctypedef.inner = &itype_def_def;
+    
     static decl members[2];
-    type_def_def.cstruct.members = members;
-    type_def_def.cstruct.cnt = array_count(members);
-    type_def_def.cstruct.name = "type_def";
+    itype_def_def.kind = STRUCT;
+    itype_def_def.cstruct.members = members;
+    itype_def_def.cstruct.cnt = array_count(members);
+    itype_def_def.cstruct.name = "_type_def";
 
     members[0].type = type_def_kind_def;
     members[0].name = "kind";
@@ -194,7 +212,7 @@ type_def get_type_def_def(){
 	
 	umembers[1].type = simple_def;
 	umembers[1].name = "simple";
-	printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
+	//printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
 
       }
 
@@ -264,15 +282,14 @@ type_def get_type_def_def(){
     }
   }
 
-  printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
-
-  static type_def type_def_def2;
-  type_def_def2.kind = TYPEDEF;
-  type_def_def2.ctypedef.inner = &type_def_def;
-  type_def_def2.ctypedef.name = "type_def";
+  //printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
  
-
-  return type_def_def2;
+ 
+  basic_defs out;
+  out.type_def_def = type_def_def;
+  out.decl_def = decl_def;
+  out.type_def_kind_def = type_def_kind_def;
+  return out;
 }
 
 typedef struct{
@@ -285,7 +302,6 @@ typedef struct{
   type_def type;
 }var_def;
 
-
 struct _compiler_state{
   type_def * type;
   size_t type_cnt;
@@ -295,6 +311,7 @@ struct _compiler_state{
 };
 
 void print_def(type_def type, int ind, bool is_decl){
+  type_def inner;
   switch(type.kind){
   case SIMPLE:
     printf("%*s %s ",ind, " ",type.simple.name);
@@ -303,10 +320,11 @@ void print_def(type_def type, int ind, bool is_decl){
     if(is_decl){
       printf("%*s %s ",ind, "  ", type.cstruct.name);
     }else{
-      printf("%*s struct {\n",ind, "  ");
+      printf("%*s struct %s{\n",ind, "  ", type.cstruct.name == NULL ? "" : type.cstruct.name);
       
       for(i64 i = 0; i < type.cstruct.cnt; i++){
-	print_def(type.cstruct.members[i].type, ind + 1, false);
+	//printf("STRUCT MEMBER %i\n",type.cstruct.members[i].type.kind);
+	print_def(type.cstruct.members[i].type, ind + 1, true);
 	if(type.cstruct.members[i].name != NULL)
 	  printf("%s;\n",type.cstruct.members[i].name);
       }
@@ -314,11 +332,16 @@ void print_def(type_def type, int ind, bool is_decl){
     }
     break;
   case POINTER:
+    //printf("PTR  %i\n",type.ptr.inner->kind);
     print_def(*(type.ptr.inner), ind, true);
     printf("* ");
     break;
   case ENUM:
-    printf("%*s %s ",ind, "  ",type.cenum.enum_name);
+    if(is_decl){
+      printf("%s ", type.cenum.enum_name);
+    }else{
+      printf("%*s %s ",ind, "  ",type.cenum.enum_name);
+    }
     break;
   case UNION:
     printf("%*s union {\n",ind, "  ");
@@ -327,25 +350,34 @@ void print_def(type_def type, int ind, bool is_decl){
       print_def(type.cunion.members[i].type, ind + 1, false);
       printf(" %s;\n", type.cunion.members[i].name);
     }
-    printf("%*s }",ind, "  ");
+    printf("%*s };",ind, "  ");
     break;
   case TYPEDEF:
-    printf("%*s typedef ", ind, "  ");
-    print_def(*(type.ctypedef.inner),ind,false);
-    printf("%s;\n",type.ctypedef.name);
+    inner = *type.ctypedef.inner;
+    //printf("TYPEDEF: %s\n", type.ctypedef.name);
+    if(is_decl){
+      printf("%s ", type.ctypedef.name);
+      //print_def(inner,ind,true);
+    }else{
+      printf("%*s typedef ", ind, "  ");
+      print_def(inner,ind,false);
+      printf("%s;\n",type.ctypedef.name);
+    }
     break;
   default:
     printf("not implemented %i", type.kind);
   }
 }
 
-void write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
+size_t write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
   FILE * f = fmemopen(buffer,buffer_len, "w");
   FILE * oldstdout = stdout;
   stdout = f;
   print_def(def,0,false);
   stdout = oldstdout;
+  size_t pos = ftell(f);
   fclose(f);
+  return pos;
 }
 
 void print_compiler_state(compiler_state * c){
@@ -415,6 +447,7 @@ static void inscribe(comp_state * state, char * data){
   size_t len = strlen(data);
   inscriben(state,data,len);
 }
+
 static void compile_iexpr(comp_state * s, expr expr1);
 static void compile_sexpr(comp_state * s, sub_expr sexpr){
   inscriben(s,sexpr.name.value,sexpr.name.strln);
@@ -465,7 +498,6 @@ void compile_expr(expr * e, compiler_state * lisp_state){
   inscribe(&s, "}");
   printf("c code: %s\n",s.buffer);
 
-  
   int ok = tcc_compile_string(tccs,s.buffer);
   if(!ok)
     ERROR("Unable to compile %s\n",s.buffer);
@@ -490,6 +522,9 @@ void load_cdecl(char * buffer, char * name, type_def decl){
     case STRUCT:
       sprintf(buffer,"%s %s;",idecl.cstruct.name, name);
       break;
+    case TYPEDEF:
+      sprintf(buffer,"%s %s;",idecl.ctypedef.name, name);
+      break;
     default:
       printf("Not supported\n");
     }
@@ -497,19 +532,122 @@ void load_cdecl(char * buffer, char * name, type_def decl){
   inner_print(decl);
 }
 
-typedef struct{
-  int xx;
-}tst;
+TCCState * mktccs(){
+  TCCState * tccs = tcc_new();
+  tcc_set_lib_path(tccs,".");
+  tcc_set_error_func(tccs, NULL, tccerror);
+  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
+  return tccs;
+}
 
-tst a;
+size_t get_required_types(compiler_state * c, type_def main_def, type_def * ts, size_t cnt){
+  UNUSED(cnt);
+  UNUSED(main_def);
+  UNUSED(c);
+  basic_defs bdef = get_type_def_def();
+  ts[0] = bdef.decl_def;
+  ts[1] = bdef.type_def_def;
+  ts[2] = bdef.type_def_kind_def;
+  return 3;
+}
 
 void * compiler_define_variable(compiler_state *c, char * name, type_def t){
+  // this is a bit complex. I need to run the code which defines and sets that variable
   UNUSED(c);
-  // this is a bit complex. i need to run the code which defines and sets that variable
-  char cdecl[100];
-  load_cdecl(cdecl, name, t);
-  printf("cdecl: %s\n",cdecl);
+  type_def required_types[100];
+  size_t required_types_cnt = get_required_types(c, t, required_types,array_count(required_types));
   
+  size_t bufsize = 10000;
+  char * buf = malloc(bufsize);
+  
+  char * locbuf = buf;
+  size_t restsize = bufsize;
+
+
+  { // insert header
+    size_t cnt = sprintf(locbuf, "#include \"cstd_header.h\"\n");
+    locbuf += cnt;
+    restsize -= cnt;	
+  }
+  for(size_t i = 0; i < required_types_cnt; i++){
+    type_def t = required_types[i];
+    if(t.kind == TYPEDEF){
+
+      type_def inner = *t.ctypedef.inner;
+      if(inner.kind == STRUCT && inner.cstruct.name != NULL){
+	
+	size_t cnt = sprintf(locbuf, "struct %s;\n", inner.cstruct.name);
+	locbuf += cnt;
+	restsize -= cnt;	
+	cnt = sprintf(locbuf, "typedef struct %s %s;\n", inner.cstruct.name, t.ctypedef.name);
+	locbuf += cnt;
+	restsize -= cnt;	
+	
+      }
+      if(inner.kind == ENUM){
+	
+	size_t cnt = sprintf(locbuf, "typedef enum {\n");
+	locbuf += cnt;
+	restsize -= cnt;	
+	
+	for(int j = 0; j < inner.cenum.cnt; j++){
+	  char * comma = (j !=(inner.cenum.cnt-1) ? "," : "");
+	  size_t cnt = sprintf(locbuf, "   %s = %i%s\n", inner.cenum.names[j], inner.cenum.values[j], comma);
+	  locbuf += cnt;
+	  restsize -= cnt;	
+	
+	}
+	cnt = sprintf(locbuf, "}%s;\n",t.ctypedef.name);
+	locbuf += cnt;
+	restsize -= cnt;	
+
+      }
+    }
+  }
+
+  for(size_t i = 0; i < required_types_cnt; i++){
+    if(required_types[i].kind != TYPEDEF){
+      ERROR("ERROR!\n");
+      continue;
+    }
+    if(required_types[i].ctypedef.inner->kind == ENUM) continue;
+    size_t cnt = write_def_to_buffer(*required_types[i].ctypedef.inner,locbuf,restsize);
+    locbuf += cnt;
+    restsize -= cnt;
+    cnt = sprintf(locbuf, ";\n");
+    locbuf += cnt;
+    restsize -= cnt;	
+
+  }
+
+  { // write code to buffer
+    char cdecl[100];
+    load_cdecl(cdecl, name, t);
+
+    size_t cnt = sprintf(locbuf, "%s\n",cdecl);
+    locbuf += cnt;
+    restsize -= cnt;	
+
+  }
+
+  printf("buffer: \n******************\n%s\n******************", buf);
+  TCCState * tccs = mktccs();
+
+  tcc_compile_string(tccs, buf);
+  
+  int size = tcc_relocate(tccs, NULL);
+  char * codebuf = malloc(size);
+  int fail = tcc_relocate(tccs, codebuf);
+  printf("RELOCATE: %i\n",!fail);
+  
+  void * var = tcc_get_symbol(tccs, name);
+
+  tcc_delete(tccs);
+
+
+  
+  free(buf);
+  return var;
 }
 void tccs_test2();
 
@@ -521,27 +659,28 @@ bool lisp_compiler_test(){
   TEST_ASSERT(list_cnt == 5);
   TEST_ASSERT(list[4] = 4);
   tccs_test2();
-  type_def def = get_type_def_def();
-
-  //return true;
-  //print_def(def, 0, false); 
+  basic_defs defs = get_type_def_def();
+  type_def def = defs.type_def_def;
   char buf[2000];
-  write_def_to_buffer(def,buf,sizeof(buf));
+  
   printf("%s",buf);
+  compiler_state * c = compiler_make();
+  void * var = compiler_define_variable(c, "type_def_def", def);
+  *((type_def *) var) = def;
+  printf("variable var: %i\n", var);
   return true;
   char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
   UNUSED(base_code);
   char * test_code = "(printf \"Hello World\\n\")(printf \"Hello Sailor!\\n\")";
-  compiler_state * c = compiler_make();
-  type_def def_void = compiler_define_simple_type(c, ":void", "void");
-  type_def def_i32 = compiler_define_simple_type(c,":i32", "int");
+
+  //type_def def_void = compiler_define_simple_type(c, ":void", "void");
+  //type_def def_i32 = compiler_define_simple_type(c,":i32", "int");
 
   print_compiler_state(c);
-  compiler_define_variable(c, "oscar", def_i32);
-  compiler_define_variable(c, "oscar2", def_void);
-  compiler_define_variable(c, "type_def_def", def);
+  //compiler_define_variable(c, "oscar", def_i32);
+  //compiler_define_variable(c, "oscar2", def_void);
+
   return true;
-  tccs_test2();
   return true;
   expr out_expr[2];
   char * next = test_code;
@@ -571,14 +710,6 @@ void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
   return tcc_get_symbol(tccs, symbol);
 }
 
-TCCState * mktccs(){
-  TCCState * tccs = tcc_new();
-  tcc_set_lib_path(tccs,".");
-  tcc_set_error_func(tccs, NULL, tccerror);
-  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
-  tcc_set_options(tccs, "-rdynamic -vv");
-  return tccs;
-}
 
 void tccs_test2(){
   char * a = "float calc_x(){ return 5.0f;}";
