@@ -648,7 +648,8 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 }
 void tccs_test2();
 void defext(compiler_state * c, char * name, type_def type){
-
+  // defining an external function is close to defining an internal one
+  // except you dont have the code for it. I can do this earlier.
 }
 bool lisp_compiler_test(){
   int * list = NULL;
