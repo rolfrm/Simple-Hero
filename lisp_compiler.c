@@ -92,29 +92,35 @@ typedef struct _basic_defs{
   type_def type_def_kind_def;
 }basic_defs;
 
-basic_defs get_type_def_def(){
-  // a snake biting its own tail.. needed for reflection
-  static type_def char_def;
+static type_def void_def;
+static type_def char_def;
+static type_def i64_def;
+static type_def char_ptr_def;
+static type_def char_ptr_ptr_def;
+static type_def i64_ptr_def;
+static type_def type_def_def;
+static type_def type_def_kind_def;
+static type_def type_def_ptr_def;
+static type_def decl_def;
+static type_def decl_ptr_def;
+  
+void load_defs(){
+  void_def = make_simple("void", "void");
   char_def = make_simple("char", "char");
-  static type_def i64_def;
   i64_def = make_simple("i64", "i64");
-  static type_def char_ptr_def;
   char_ptr_def.kind = POINTER;
   char_ptr_def.ptr.inner = &char_def;
-  
-  static type_def char_ptr_ptr_def;
   char_ptr_ptr_def.kind = POINTER;
   char_ptr_ptr_def.ptr.inner = &char_ptr_def;
-
-  static type_def i64_ptr_def;
   i64_ptr_def.kind = POINTER;
   i64_ptr_def.ptr.inner = &i64_def;  
-
-  static type_def type_def_def;
   type_def_def.kind = TYPEDEF;
   type_def_def.ctypedef.name = "type_def";
-
-  static type_def type_def_kind_def;
+  type_def_ptr_def.kind = POINTER;
+  type_def_ptr_def.ptr.inner = &type_def_def;  
+  decl_ptr_def.kind = POINTER;
+  decl_ptr_def.ptr.inner = &decl_def;
+  
   { // kind enum
     static type_def type_def_kind_def_inner;
     type_def_kind_def.kind = TYPEDEF;
@@ -127,11 +133,7 @@ basic_defs get_type_def_def(){
     type_def_kind_def_inner.cenum.names = kindnames;
     type_def_kind_def_inner.cenum.values = kindvalues;
   }
-  
-  static type_def type_def_ptr_def;
-  type_def_ptr_def.kind = POINTER;
-  type_def_ptr_def.ptr.inner = &type_def_def;  
-  static type_def decl_def;
+
   {
     static decl members[2];
     static type_def dclinner;
@@ -150,9 +152,6 @@ basic_defs get_type_def_def(){
     decl_def.ctypedef.inner = &dclinner;
   }
   
-  static type_def decl_ptr_def;
-  decl_ptr_def.kind = POINTER;
-  decl_ptr_def.ptr.inner = &decl_def;
   
   { //type_def struct members:
     static type_def itype_def_def;
@@ -278,18 +277,8 @@ basic_defs get_type_def_def(){
 	umembers[6].type = ctypedef_def;
 	umembers[6].name = "ctypedef";
       }
-
     }
   }
-
-  //printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
- 
- 
-  basic_defs out;
-  out.type_def_def = type_def_def;
-  out.decl_def = decl_def;
-  out.type_def_kind_def = type_def_kind_def;
-  return out;
 }
 
 typedef struct{
@@ -544,10 +533,9 @@ size_t get_required_types(compiler_state * c, type_def main_def, type_def * ts, 
   UNUSED(cnt);
   UNUSED(main_def);
   UNUSED(c);
-  basic_defs bdef = get_type_def_def();
-  ts[0] = bdef.decl_def;
-  ts[1] = bdef.type_def_def;
-  ts[2] = bdef.type_def_kind_def;
+  ts[0] = decl_def;
+  ts[1] = type_def_def;
+  ts[2] = type_def_kind_def;
   return 3;
 }
 
@@ -647,11 +635,38 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   return var;
 }
 void tccs_test2();
-void defext(compiler_state * c, char * name, type_def type){
+compiler_state * cs = NULL;
+void defext(char * name, type_def type){
   // defining an external function is close to defining an internal one
   // except you dont have the code for it. I can do this earlier.
+  var_def fdef;
+  fdef.name = name;
+  fdef.type = type;
+  list_add((void **)&cs->vars, &cs->var_cnt,&fdef,sizeof(var_def));
 }
+
+
+	  
 bool lisp_compiler_test(){
+  compiler_state * c = compiler_make();
+  cs = c;
+  load_defs();
+	  
+  static type_def defext_def;
+  {
+    static decl args[2];
+    args[0].name = "name";
+    args[0].type = char_ptr_def;
+    args[1].name = "type";
+    args[1].type = type_def_def;
+    defext_def.kind = FUNCTION;
+    defext_def.fcn.ret = &void_def;
+    defext_def.fcn.cnt = array_count(args);
+    defext_def.fcn.args = args;
+    defext("defext",defext_def);
+  }
+
+
   int * list = NULL;
   size_t list_cnt = 0;
   for(int i = 0; i < 5;i++)
@@ -659,18 +674,17 @@ bool lisp_compiler_test(){
   TEST_ASSERT(list_cnt == 5);
   TEST_ASSERT(list[4] = 4);
   tccs_test2();
-  basic_defs defs = get_type_def_def();
-  type_def def = defs.type_def_def;
+  type_def def = type_def_def;
   char buf[2000];
   
   printf("%s",buf);
-  compiler_state * c = compiler_make();
+
   type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", defs.decl_def);
   *((type_def *) var) = def;
-  *((type_def *) var2) = defs.decl_def;
+  *((type_def *) var2) = decl_def;
 
-  type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
+  //type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
 
   printf("variable var: %i %i\n", var, var2);
   return true;
