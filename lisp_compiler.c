@@ -639,18 +639,17 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   char * codebuf = malloc(size);
   int fail = tcc_relocate(tccs, codebuf);
   printf("RELOCATE: %i\n",!fail);
-  
   void * var = tcc_get_symbol(tccs, name);
 
   tcc_delete(tccs);
 
-
-  
   free(buf);
   return var;
 }
 void tccs_test2();
+void defext(compiler_state * c, char * name, type_def type){
 
+}
 bool lisp_compiler_test(){
   int * list = NULL;
   size_t list_cnt = 0;
@@ -665,9 +664,14 @@ bool lisp_compiler_test(){
   
   printf("%s",buf);
   compiler_state * c = compiler_make();
-  void * var = compiler_define_variable(c, "type_def_def", def);
+  type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
+  type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", defs.decl_def);
   *((type_def *) var) = def;
-  printf("variable var: %i\n", var);
+  *((type_def *) var2) = defs.decl_def;
+
+  type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
+
+  printf("variable var: %i %i\n", var, var2);
   return true;
   char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
   UNUSED(base_code);
@@ -680,7 +684,6 @@ bool lisp_compiler_test(){
   //compiler_define_variable(c, "oscar", def_i32);
   //compiler_define_variable(c, "oscar2", def_void);
 
-  return true;
   return true;
   expr out_expr[2];
   char * next = test_code;
