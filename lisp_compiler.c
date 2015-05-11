@@ -645,8 +645,6 @@ void defext(char * name, type_def type){
   list_add((void **)&cs->vars, &cs->var_cnt,&fdef,sizeof(var_def));
 }
 
-
-	  
 bool lisp_compiler_test(){
   compiler_state * c = compiler_make();
   cs = c;
@@ -666,7 +664,6 @@ bool lisp_compiler_test(){
     defext("defext",defext_def);
   }
 
-
   int * list = NULL;
   size_t list_cnt = 0;
   for(int i = 0; i < 5;i++)
@@ -680,7 +677,7 @@ bool lisp_compiler_test(){
   printf("%s",buf);
 
   type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
-  type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", defs.decl_def);
+  type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
   *((type_def *) var) = def;
   *((type_def *) var2) = decl_def;
 
