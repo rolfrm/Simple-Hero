@@ -649,9 +649,9 @@ bool lisp_compiler_test(){
   compiler_state * c = compiler_make();
   cs = c;
   load_defs();
-	  
-  static type_def defext_def;
-  {
+  
+  { // define the function to define external functions.
+    static type_def defext_def;
     static decl args[2];
     args[0].name = "name";
     args[0].type = char_ptr_def;
