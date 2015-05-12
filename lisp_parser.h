@@ -29,7 +29,6 @@ typedef struct{
 typedef struct _expr expr;
 
 typedef struct{
-  value_expr name;
   expr * sub_exprs;
   int sub_expr_count;  
 }sub_expr;
@@ -45,4 +44,4 @@ struct _expr{
 char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count);
 void delete_expr(expr * expr);
 void print_expr(expr * expr);
-int test_lisp_parser();
+bool test_lisp_parser();

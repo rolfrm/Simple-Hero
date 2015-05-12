@@ -69,43 +69,49 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
   }else if(expr->type == EXPR){
     
     sub_expr sexpr = expr->sub_expr;
-    value_expr name = sexpr.name;
-    lisp_result results[sexpr.sub_expr_count];
+    lisp_result * results;
+    lisp_result _results[sexpr.sub_expr_count];
+    results = _results;
     for(int i = 0; i < sexpr.sub_expr_count; i++){
       eval_expr(sexpr.sub_exprs + i, just_check_types, results + i);
       if(results[i].typeid == TYPEID_ERROR){
-	ERROR("ERROR matching type at '%.*s' arg %i ",name.strln, name.value, i);
+	ERROR("ERROR matching type at arg %i ", i);
       }
     }
+    char * name = results[0].data_str;
     
-    if(vexprcmpstr(name, "circle")){
+    results++;
+    u32 argn = sexpr.sub_expr_count -1;
+    
+
+    if(strcmp(name, "circle")){
       circle circ;
-      if(array_count(results) != 3)
+      if(argn != 3)
 	loge("circle requires three arguments");
-      for(u32 i = 0; i < array_count(results); i++)
+      for(u32 i = 0; i < argn; i++)
 	if(results[i].typeid != TYPEID_DOUBLE)
 	  loge("Circle only supports DOUBLE args");
       circ.xy = (vec2){.data = {results[0].data_double, results[1].data_double}};
       circ.r = results[2].data_double;
       result->typeid = TYPEID_CIRCLE;
       result->circle = (circle_graph){.type = CG_LEAF, .circ = circ};
-    }else if(vexprcmpstr(name, "add") || vexprcmpstr(name, "sub") || vexprcmpstr(name, "isec") ){
-      if(array_count(results) != 2){
+    }else if(strcmp(name, "add") || strcmp(name, "sub") || strcmp(name, "isec") ){
+      if(argn != 2){
 	ERROR("unexpected number of args");
 	goto jmperror;
       }
-      for(u32 i = 0; i < array_count(results); i++){
+      for(u32 i = 0; i < argn; i++){
 	if(results[i].typeid != TYPEID_CIRCLE){
 	  ERROR("add only accepts CIRCLE graph args (arg %i)", i);
 	  goto jmperror;
 	}
       }
       circle_graph_node * cg = malloc(sizeof(circle_graph_node));
-      if(vexprcmpstr(name, "add")){
+      if(strcmp(name, "add")){
 	cg->func = ADD;
-      }else if(vexprcmpstr(name, "sub")){
+      }else if(strcmp(name, "sub")){
 	cg->func = SUB;
-      }else if(vexprcmpstr(name, "isec")){
+      }else if(strcmp(name, "isec")){
 	cg->func = ISEC;
       }
       cg->left = results[0].circle;
@@ -114,14 +120,14 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
       result->circle.node =cg;
       result->typeid = TYPEID_CIRCLE;
       
-    }else if(vexprcmpstr(name, "entity")){
+    }else if(strcmp(name, "entity")){
       // supports optional id. color, scenery.
       // requires a circle
       entity entity;
       entity.xy = (vec2){.data = {0.0,0.0}};
       entity.id = NULL;
       entity.color = (color){.color = 0xFFFFFFFF};
-      for(size_t i = 0; i < array_count(results); i++){
+      for(size_t i = 0; i < argn; i++){
 	lisp_result r = results[i];
 	if(r.typeid == KEYWORD){
 	  if(strcmp(r.data_str, "id") == 0){
@@ -151,8 +157,8 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
       }
       result->typeid = TYPEID_ENTITY;
       result->entity = entity;
-    }else if(vexprcmpstr(name, "from.rgb")){
-      if(array_count(results) != 3)
+    }else if(strcmp(name, "from.rgb")){
+      if(argn != 3)
 	goto jmperror;
       color color;
       for(int i = 0; i < 3; i++){
@@ -163,7 +169,7 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
       result->typeid = TYPEID_COLOR;
       result->color = color;
     }else{
-      loge("Unknown function '%.*s'\n",name.strln,name.value);
+      loge("Unknown function '%s'\n",name);
     }
   }
   else{

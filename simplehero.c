@@ -36,8 +36,8 @@ void _error(const char * file, int line, const char * str, ...){
   if(!noncritical)
     faulty = true;
   if(noncritical) return; //skip noncritical errors
-  printf("** ERROR at %s:%i **\n",file,line);
-  printf(buffer);
+  loge("** ERROR at %s:%i **\n",file,line);
+  loge("%s", buffer);
   printf("\n");
   printf("** **\n");
 }
@@ -47,7 +47,9 @@ bool test_circle();
 bool lisp_compiler_test();
 void circle_sg_main();
 void ld32_main();
+bool test_lisp_parser();
 int main(){
+  TEST(test_lisp_parser);
   TEST(lisp_compiler_test);
   return 0;
   //TEST(test_circle);
