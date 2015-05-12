@@ -825,14 +825,13 @@ bool lisp_compiler_test(){
   tccs_test2();
   type_def def = type_def_def;
   char buf[2000];
-  
   printf("%s",buf);
-
+ 
   type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
   *((type_def *) var) = def;
   *((type_def *) var2) = decl_def;
-
+  
   //type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
 
   printf("variable var: %i %i\n", var, var2);
