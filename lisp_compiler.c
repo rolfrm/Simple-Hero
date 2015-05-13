@@ -693,7 +693,11 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   // this is a bit complex. I need to run the code which defines and sets that variable
   UNUSED(c);
   type_def required_types[100];
-  size_t required_types_cnt = get_required_types(c, t, required_types,array_count(required_types));
+  for(size_t i = 0; i < array_count(required_types); i++)
+    required_types[i] = void_def;
+  make_dependency_graph(required_types,t);
+  size_t required_types_cnt = 0;
+  for(; type_def_cmp(required_types[required_types_cnt], void_def) == false; required_types_cnt++);
   
   size_t bufsize = 10000;
   char * buf = malloc(bufsize);
@@ -710,8 +714,18 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   for(size_t i = 0; i < required_types_cnt; i++){
     type_def t = required_types[i];
     printf("type %i: %s\n", i, t.ctypedef.name);
+    if(t.kind == STRUCT){
+      printf("Printing struct\n");
+      char * name = t.cstruct.name;
+      if(name != NULL){
+	size_t cnt;
+	cnt = sprintf(locbuf, "struct %s;\n", name);
+	locbuf += cnt;
+	restsize -= cnt;
+      }
+    }
     if(t.kind == TYPEDEF){
-
+      printf("Printing typedef\n");
       type_def inner = *t.ctypedef.inner;
       if(inner.kind == STRUCT){
 	char * name = inner.cstruct.name;
@@ -721,7 +735,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 	  sprintf(_namebuf, "_%s_", t.ctypedef.name);
 	  name = _namebuf;
 	}
-	cnt = sprintf(locbuf, "struct %s;\n",name);
+	//cnt = sprintf(locbuf, "struct %s;\n",name);
 	locbuf += cnt;
 	restsize -= cnt;	
 	cnt = sprintf(locbuf, "typedef struct %s %s;\n", name, t.ctypedef.name);
@@ -730,7 +744,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 	
       }
       if(inner.kind == ENUM){
-	
+	printf("Printing enum\n");	
 	size_t cnt = sprintf(locbuf, "typedef enum {\n");
 	locbuf += cnt;
 	restsize -= cnt;	
@@ -751,25 +765,13 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
 
   for(size_t i = 0; i < required_types_cnt; i++){
-    printf("type2 %i: %s\n", i, t.ctypedef.name);
-    if(required_types[i].kind != TYPEDEF){
-      ERROR("ERROR!\n");
-      continue;
-    }
 
     type_def t = required_types[i];
-    type_def td = *t.ctypedef.inner;
-    if(td.kind == ENUM) continue;
-
+    printf("writing definition %i to buffer..\n",t.kind);
+    if(t.kind != STRUCT) continue;
+    printf("HAPPENS.. %s\n",t.cstruct.name);
     char struct_name[20];
-
-    if(td.kind == STRUCT){
-      if(td.cstruct.name == NULL){
-	sprintf(struct_name, "_%s_",t.ctypedef.name);
-	td.cstruct.name = struct_name;
-      }
-    }
-    size_t cnt = write_def_to_buffer(td,locbuf,restsize);
+    size_t cnt = write_def_to_buffer(t,locbuf,restsize);
     locbuf += cnt;
     restsize -= cnt;
     cnt = sprintf(locbuf, ";\n");
@@ -856,7 +858,6 @@ bool lisp_compiler_test(){
   make_dependency_graph(defs,type_def_def);
   make_dependency_graph(defs,decl_def);
   print_dep_graph(defs);
-  return false;
 	  
   { // print_string definition
     static type_def print_string_def;
