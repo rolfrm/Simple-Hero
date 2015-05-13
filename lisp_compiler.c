@@ -194,8 +194,7 @@ void load_defs(){
     decl_def.ctypedef.name = "decl";
     decl_def.ctypedef.inner = &dclinner;
   }
-  
-  
+    
   { //type_def struct members:
     static type_def itype_def_def;
     type_def_def.ctypedef.inner = &itype_def_def;
@@ -254,10 +253,8 @@ void load_defs(){
 	
 	umembers[1].type = simple_def;
 	umembers[1].name = "simple";
-	//printf("SIMPLE: %i\n", type_def_def.cstruct.members[1].type.cstruct.members[1].type.cstruct.cnt);
-
       }
-
+      
       {//fcn
 	static type_def fcn_def;
 	static decl members[3];
@@ -509,6 +506,38 @@ fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
   return NULL;
 }
 
+int add_type_dependency(type_def * defs, type_def def){
+  if(type_def_cmp(void_def,def))
+    return -1;
+  type_def * def_orig = defs;
+  while(type_def_cmp(void_def,*defs++) == false)
+    if(type_def_cmp(def,*defs))
+      return defs - def_orig;
+  defs = def_orig;
+  
+  int max_typeid = -1;
+  switch(def.kind){
+  case STRUCT:
+    for(int i = 0; i < def.cstruct.cnt; i++){
+      type_def sdef = def.cstruct.members[i].type;
+      int depid = add_type_dependency(defs,sdef);
+      max_typeid = MAX(depid,max_typeid);
+    }
+    list_insert(defs,max_typeid, &def,sizeof(type_def));
+    return max_typeid;
+    break;
+  case POINTER:
+    return -1;
+  case TYPEDEF:
+    return add_type_dependency(defs,*def.ctypedef.inner);
+  case ENUM:
+    return -1;
+  case FUNCTION:
+    max_typeid = add_type_dependency(
+  }
+  
+}
+
 static type_def compile_iexpr(comp_state * s, expr expr1);
 static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 
@@ -523,6 +552,7 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
     //  }
       value_expr sexpr2 = sexpr.sub_exprs[i].value;
       fcn = get_fcn_def(s->c,sexpr2.value,sexpr2.strln);
+      add_required_fcn(*fcn);
       if(fcn == NULL){
 	ERROR("Unknown function '%.*s'",sexpr2.strln,sexpr2.value);
 	return error_def;
