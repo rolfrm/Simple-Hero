@@ -122,11 +122,16 @@ typedef struct _basic_defs{
 }basic_defs;
 
 
-typedef struct{
+typedef struct _fcn_def{
   char * name;
   type_def type;
 }fcn_def;
 
+bool fcn_def_cmp(fcn_def a, fcn_def b){
+  return type_def_cmp(a.type,b.type)
+    && strcmp(a.name,b.name) == 0;
+}
+	  
 typedef struct{
   char * name;
   type_def type;
@@ -327,7 +332,7 @@ void load_defs(){
     inner.kind = STRUCT;
     inner.cstruct.members = members;
     inner.cstruct.cnt = array_count(members);
-    inner.cstruct.name = NULL;
+    inner.cstruct.name = "_fcn_def";
     members[0].name = "name";
     members[0].type = char_ptr_def;
     members[1].name = "type";
@@ -394,7 +399,6 @@ void print_def(type_def type, int ind, bool is_decl){
       sprintf(struct_name, "_%s_",type.ctypedef.name);
       inner.cstruct.name = struct_name;
     }
-    //printf("TYPEDEF: %s\n", type.ctypedef.name);
     if(is_decl){
       printf("%s ", type.ctypedef.name);
       //print_def(inner,ind,true);
@@ -465,12 +469,16 @@ typedef struct{
   char * buffer;
   char * buffer_ptr;
   char * end_of_buffer;
+  fcn_def * fcns;
+  size_t fcn_cnt;
 }comp_state;
 
 comp_state comp_state_make(char * buffer){
   comp_state out;
   out.buffer = buffer;
   out.buffer_ptr = buffer;
+  out.fcns = NULL;
+  out.fcn_cnt = 0;
   return out;
 }
 
@@ -490,9 +498,7 @@ static void inscribe(comp_state * state, char * data){
 }
 
 fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
-  printf("finding functions:\n");
   for(size_t i = 0;i < c->var_cnt; i++){
-    printf(":: %s\n", c->vars[i].name);
     for(size_t j = 0; j < name_len; j++)
       if(name[j] != c->vars[i].name[j])
 	goto next_item;
@@ -505,9 +511,9 @@ fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
 
 void make_dependency_graph(type_def * defs, type_def def){
 	  
-  if(type_def_cmp(void_def,def)){
+  if(type_def_cmp(void_def,def))
     return;
-  }
+  
   
   switch(def.kind){
   case UNION:
@@ -526,7 +532,8 @@ void make_dependency_graph(type_def * defs, type_def def){
     if(def.cstruct.name == NULL) return;
     break;
   case POINTER:
-    return;
+    def = *def.ptr.inner;
+    break;
   case TYPEDEF:
     make_dependency_graph(defs,*def.ctypedef.inner);
     break;
@@ -550,8 +557,11 @@ void make_dependency_graph(type_def * defs, type_def def){
 }
 
 void add_required_fcn(comp_state * s, fcn_def fdef){
-  UNUSED(s);
-  UNUSED(fdef);
+  for(size_t i = 0; i < s->fcn_cnt; i++){
+    if(fcn_def_cmp(fdef,s->fcns[i]) == true)
+      return;
+  }
+  list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
 }
 	  
 static type_def compile_iexpr(comp_state * s, expr expr1);
@@ -611,6 +621,7 @@ static type_def compile_iexpr(comp_state * s, expr expr1){
   return error_def;
 }
   
+void print_string(char * buf);
 void compile_expr(expr * e, compiler_state * lisp_state){
 
   static TCCState * tccs;
@@ -626,16 +637,26 @@ void compile_expr(expr * e, compiler_state * lisp_state){
   comp_state s = comp_state_make(buf);
   s.c = lisp_state;
   char header[100];
-  sprintf(header,"void test%i() {",exprcnt);
+  sprintf(header,"void test%i() {",++exprcnt);
+  
   inscribe(&s, header);
   compile_iexpr(&s, *e);
   inscribe(&s, ";");
   inscribe(&s, "}");
   printf("c code: %s\n",s.buffer);
-
-  int ok = tcc_compile_string(tccs,s.buffer);
+  char buffer[1000];
+  char * locbuf = buffer;
+  for(size_t i = 0; i < s.fcn_cnt; i++){
+    tcc_add_symbol(tccs, s.fcns[i].name, &print_string);
+    size_t written = sprintf(locbuf, "void %s (char * name);\n", s.fcns[i].name); 
+    locbuf += written;
+  }
+  sprintf(locbuf, "%s", s.buffer); 
+  printf("BUFFER: %s\n", buffer);
+  int ok = tcc_compile_string(tccs,buffer);
   if(!ok)
     ERROR("Unable to compile %s\n",s.buffer);
+  else printf("SUCCESS compiling\n");
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
   printf("size: %i\n", size);
   sprintf(header,"test%i",exprcnt);
@@ -736,8 +757,8 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 	  name = _namebuf;
 	}
 	//cnt = sprintf(locbuf, "struct %s;\n",name);
-	locbuf += cnt;
-	restsize -= cnt;	
+	//locbuf += cnt;
+	//restsize -= cnt;	
 	cnt = sprintf(locbuf, "typedef struct %s %s;\n", name, t.ctypedef.name);
 	locbuf += cnt;
 	restsize -= cnt;	
@@ -770,7 +791,6 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
     printf("writing definition %i to buffer..\n",t.kind);
     if(t.kind != STRUCT) continue;
     printf("HAPPENS.. %s\n",t.cstruct.name);
-    char struct_name[20];
     size_t cnt = write_def_to_buffer(t,locbuf,restsize);
     locbuf += cnt;
     restsize -= cnt;
@@ -871,6 +891,7 @@ bool lisp_compiler_test(){
     fcn_def fdef = defext("print_string", fcn_def_def);
     fcn_def * var = (fcn_def *) compiler_define_variable(c, "print_string", fcn_def_def);
     printf("VAR: %i\n", var);
+    TEST_ASSERT(var != NULL);
     *var = fdef;
   }
 
@@ -914,7 +935,7 @@ bool lisp_compiler_test(){
 
   char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
   UNUSED(base_code);
-  char * test_code = "(print_string \"Hello World\\n\")(print_string \"Hello World\\n\")";
+  char * test_code = "(print_string \"Hello World\\n\")(print_string \"Hello Sailor!\\n\")";
 
   //type_def def_void = compiler_define_simple_type(c, ":void", "void");
   //type_def def_i32 = compiler_define_simple_type(c,":i32", "int");
