@@ -176,24 +176,6 @@ void load_defs(){
     type_def_kind_def_inner.cenum.names = kindnames;
     type_def_kind_def_inner.cenum.values = kindvalues;
   }
-
-  {
-    static decl members[2];
-    static type_def dclinner;
-    members[0].name = "name";
-    members[0].type = char_ptr_def;
-    members[1].name = "type";
-    members[1].type = type_def_ptr_def;
-     
-    dclinner.kind = STRUCT;
-    dclinner.cstruct.name = "_decl";
-    dclinner.cstruct.members = members;
-    dclinner.cstruct.cnt = array_count(members);
-    
-    decl_def.kind = TYPEDEF;
-    decl_def.ctypedef.name = "decl";
-    decl_def.ctypedef.inner = &dclinner;
-  }
     
   { //type_def struct members:
     static type_def itype_def_def;
@@ -289,7 +271,7 @@ void load_defs(){
 	umembers[3].type = cstruct_def;
 	umembers[3].name = "cstruct";
 	umembers[4].type = cstruct_def;
-	umembers[4].type.cstruct.name = "cunion";
+	umembers[4].type.cstruct.name = NULL;
 	umembers[4].name = "cunion";
       }
 
@@ -319,7 +301,23 @@ void load_defs(){
       }
     }
   }
-
+  {
+    static decl members[2];
+    static type_def dclinner;
+    members[0].name = "name";
+    members[0].type = char_ptr_def;
+    members[1].name = "type";
+    members[1].type = type_def_def;
+     
+    dclinner.kind = STRUCT;
+    dclinner.cstruct.name = "_decl";
+    dclinner.cstruct.members = members;
+    dclinner.cstruct.cnt = array_count(members);
+    
+    decl_def.kind = TYPEDEF;
+    decl_def.ctypedef.name = "decl";
+    decl_def.ctypedef.inner = &dclinner;
+  }
   { // fcn_def
     fcn_def_def.kind = TYPEDEF;
     static decl members[2];
@@ -334,7 +332,6 @@ void load_defs(){
     members[0].type = char_ptr_def;
     members[1].name = "type";
     members[1].type = type_def_def;
-
   }
 }
 
@@ -506,38 +503,57 @@ fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
   return NULL;
 }
 
-int add_type_dependency(type_def * defs, type_def def){
-  if(type_def_cmp(void_def,def))
-    return -1;
-  type_def * def_orig = defs;
-  while(type_def_cmp(void_def,*defs++) == false)
-    if(type_def_cmp(def,*defs))
-      return defs - def_orig;
-  defs = def_orig;
+void make_dependency_graph(type_def * defs, type_def def){
+	  
+  if(type_def_cmp(void_def,def)){
+    return;
+  }
   
-  int max_typeid = -1;
   switch(def.kind){
+  case UNION:
+    for(int i = 0; i < def.cunion.cnt; i++){
+      type_def sdef = def.cunion.members[i].type;
+      make_dependency_graph(defs,sdef);
+    }	  
+    if(def.cunion.name == NULL) return;
+    break;
   case STRUCT:
     for(int i = 0; i < def.cstruct.cnt; i++){
       type_def sdef = def.cstruct.members[i].type;
-      int depid = add_type_dependency(defs,sdef);
-      max_typeid = MAX(depid,max_typeid);
+      make_dependency_graph(defs,sdef);
     }
-    list_insert(defs,max_typeid, &def,sizeof(type_def));
-    return max_typeid;
+
+    if(def.cstruct.name == NULL) return;
     break;
   case POINTER:
-    return -1;
+    return;
   case TYPEDEF:
-    return add_type_dependency(defs,*def.ctypedef.inner);
+    make_dependency_graph(defs,*def.ctypedef.inner);
+    break;
   case ENUM:
-    return -1;
+    return;
   case FUNCTION:
-    max_typeid = add_type_dependency(
+    make_dependency_graph(defs, *def.fcn.ret);
+    for(int i = 0; i < def.fcn.cnt; i++)
+      make_dependency_graph(defs, def.fcn.args[i].type);
+    break;
+ case SIMPLE:
+  default:
+   break;
   }
-  
+	  
+  while(type_def_cmp(void_def,*defs) == false){
+    if(type_def_cmp(def,*defs)) return;
+    defs++;
+  }
+  *defs = def;	  
 }
 
+void add_required_fcn(comp_state * s, fcn_def fdef){
+  UNUSED(s);
+  UNUSED(fdef);
+}
+	  
 static type_def compile_iexpr(comp_state * s, expr expr1);
 static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 
@@ -552,7 +568,7 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
     //  }
       value_expr sexpr2 = sexpr.sub_exprs[i].value;
       fcn = get_fcn_def(s->c,sexpr2.value,sexpr2.strln);
-      add_required_fcn(*fcn);
+      add_required_fcn(s, *fcn);
       if(fcn == NULL){
 	ERROR("Unknown function '%.*s'",sexpr2.strln,sexpr2.value);
 	return error_def;
@@ -805,15 +821,43 @@ fcn_def defext(char * name, type_def type){
   return fdef;
 }
 
-
 void print_string(char * string){
   printf("%s", string);
 }
+	  
+void print_dep_graph(type_def * defs){
+    for(int i = 0; type_def_cmp(void_def,defs[i]) == false; i++){
+      printf("%i ",defs[i].kind);
+      if(defs[i].kind == SIMPLE)
+	printf("%s ", defs[i].simple.cname);
+      if(defs[i].kind == STRUCT){
+	if(defs[i].cstruct.name != NULL)
+	  printf("%s ", defs[i].cstruct.name);
+      }
+      if(defs[i].kind == TYPEDEF){
+	if(defs[i].ctypedef.name != NULL)
+	  printf("%s ", defs[i].ctypedef.name);
+      }
+      printf(" \n");
+    }	  
+}	  
 
 bool lisp_compiler_test(){
   compiler_state * c = compiler_make();
   cs = c;
   load_defs();
+  type_def defs[1000];
+  for(size_t i = 0; i < array_count(defs);i++)
+    defs[i] = void_def;
+  printf("Graphs..\n");
+  
+  //print_dep_graph(defs);
+  //printf("\n..\n");	  
+  make_dependency_graph(defs,type_def_def);
+  make_dependency_graph(defs,decl_def);
+  print_dep_graph(defs);
+  return false;
+	  
   { // print_string definition
     static type_def print_string_def;
     static decl args[1];
@@ -842,6 +886,7 @@ bool lisp_compiler_test(){
     defext_def.fcn.args = args;
     
     fcn_def fdef = defext("defext",defext_def);
+    UNUSED(fdef);
     //fcn_def * var = (fcn_def *) compiler_define_variable(c, "defext", defext_def);
     //*var = fdef;
   }
