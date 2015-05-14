@@ -743,8 +743,9 @@ void print_cdecl(decl idecl){
     }
 
   }
+
   inner_print(idecl);
-  printf(";\n");
+  printf(";\n\n\n");
 }
 	  
 size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
@@ -950,11 +951,14 @@ bool lisp_compiler_test(){
   decl dcl;
   dcl.name = "test";
   dcl.type = void_ptr_def;
-  char testd[1000];
+  char * testd = malloc(10000);
   printf("\n");
   print_cdecl(dcl);
-  load_cdecl(testd, sizeof(testd), dcl);
-  printf("testd: |%s|",testd);
+  load_cdecl(testd+10, 10000, dcl);
+  printf("%i %i %i\n",'-','_','-');
+  for(int i = 0; i < 30; i++)
+    printf("%i ",testd[i]);
+  printf("testd: |%s|",testd + 10);
   return false;
   type_def defs[1000];
   for(size_t i = 0; i < array_count(defs);i++)
