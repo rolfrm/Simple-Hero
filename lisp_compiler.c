@@ -370,43 +370,43 @@ void print_def(type_def type, int ind, bool is_decl){
   type_def inner;
   switch(type.kind){
   case SIMPLE:
-    printf("%*s%s ",ind, "",type.simple.name);
+    format("%*s%s ",ind, "",type.simple.name);
     break;
   case STRUCT:
     if(is_decl){
-      printf("%*s %s ",ind, "  ", type.cstruct.name);
+      format("%*s %s ",ind, "  ", type.cstruct.name);
     }else{
-      printf("%*s struct %s{\n",ind, "  ", type.cstruct.name == NULL ? "" : type.cstruct.name);
+      format("%*s struct %s{\n",ind, "  ", type.cstruct.name == NULL ? "" : type.cstruct.name);
       
       for(i64 i = 0; i < type.cstruct.cnt; i++){
-	//printf("STRUCT MEMBER %i\n",type.cstruct.members[i].type.kind);
+	//format("STRUCT MEMBER %i\n",type.cstruct.members[i].type.kind);
 	print_def(type.cstruct.members[i].type, ind + 1, true);
 	if(type.cstruct.members[i].name != NULL)
-	  printf("%s;\n",type.cstruct.members[i].name);
+	  format("%s;\n",type.cstruct.members[i].name);
       }
-      printf("%*s }",ind, "  "); 
+      format("%*s }",ind, "  "); 
     }
     break;
   case POINTER:
-    //printf("PTR  %i\n",type.ptr.inner->kind);
+    //format("PTR  %i\n",type.ptr.inner->kind);
     print_def(*(type.ptr.inner), ind, true);
-    printf("* ");
+    format("* ");
     break;
   case ENUM:
     if(is_decl){
-      printf("%s ", type.cenum.enum_name);
+      format("%s ", type.cenum.enum_name);
     }else{
-      printf("%*s %s ",ind, "  ",type.cenum.enum_name);
+      format("%*s %s ",ind, "  ",type.cenum.enum_name);
     }
     break;
   case UNION:
-    printf("%*s union {\n",ind, "  ");
+    format("%*s union {\n",ind, "  ");
 
     for(i64 i = 0; i < type.cunion.cnt; i++){
       print_def(type.cunion.members[i].type, ind + 1, false);
-      printf(" %s;\n", type.cunion.members[i].name);
+      format(" %s;\n", type.cunion.members[i].name);
     }
-    printf("%*s };",ind, "  ");
+    format("%*s };",ind, "  ");
     break;
   case TYPEDEF:
     inner = *type.ctypedef.inner;
@@ -417,17 +417,17 @@ void print_def(type_def type, int ind, bool is_decl){
       inner.cstruct.name = struct_name;
     }
     if(is_decl){
-      printf("%s ", type.ctypedef.name);
+      format("%s ", type.ctypedef.name);
       //print_def(inner,ind,true);
     }else{
-      printf("%*s typedef ", ind, "  ");
+      format("%*s typedef ", ind, "  ");
       print_def(inner,ind,false);
-      printf("%s;\n",type.ctypedef.name);
+      format("%s;\n",type.ctypedef.name);
     }
     
     break;
   default:
-    printf("not implemented %i", type.kind);
+    format("not implemented %i", type.kind);
   }
 }
 
@@ -444,12 +444,12 @@ size_t write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
 }
 
 void print_compiler_state(compiler_state * c){
-  printf("Compiler state: \n printing types:\n");
+  format("Compiler state: \n printing types:\n");
   for(size_t i = 0; i < c->type_cnt; i++){
     print_def(c->type[i], 0 , false);
-    printf("\n");
+    format("\n");
   }
-  printf("printing variables\n");
+  format("printing variables\n");
 }
 
 compiler_state * compiler_make(){
@@ -475,7 +475,7 @@ type_def compiler_define_simple_type(compiler_state * c, char * name, char * cna
 
 void tccerror(void * opaque, const char * msg){
   UNUSED(opaque);
-  printf("%s\n",msg);
+  format("%s\n",msg);
 }
 
 typedef struct{
@@ -610,12 +610,12 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 	ERROR("Invalid argument %i for '%s'", i -1, fcn->name);
 	char buf[100];
 	load_cdecl(buf,100,fcn->type.fcn.args[i-1]);
-	printf("%s\n",buf);
+	format("%s\n",buf);
 	decl arg;
 	arg.name = "arg";
 	arg.type = def;
 	load_cdecl(buf,100,arg);
-	printf("%s\n",buf);
+	format("%s\n",buf);
 	return error_def;
       }
       if(i != sexpr.sub_expr_count -1)
@@ -659,9 +659,9 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
   tcc_set_lib_path(tccs,".");
   int libpathok = tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
                       // /usr/lib/x86_64-linux-gnu/libglfw.so
-  printf("libpathok: %i\n", libpathok);
+  format("libpathok: %i\n", libpathok);
   int libok = tcc_add_library(tccs, "glfw");
-  printf("libok: %i\n", libok);
+  format("libok: %i\n", libok);
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
   
@@ -676,7 +676,7 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
   compile_iexpr(&s, *e);
   inscribe(&s, ";");
   inscribe(&s, "}");
-  printf("c code: %s\n",s.buffer);
+  format("c code: %s\n",s.buffer);
   char buffer[1000];
   char * locbuf = buffer;
   for(size_t i = 0; i < s.fcn_cnt; i++){
@@ -692,19 +692,19 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
     locbuf += written;
   }
   sprintf(locbuf, "%s", s.buffer); 
-  printf("*** BUFFER *** \n%s\n*********", buffer);
+  format("*** BUFFER *** \n%s\n*********", buffer);
   int ok = tcc_compile_string(tccs,buffer);
   if(ok != 0){
     ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
     return false;
   }
-  else printf("SUCCESS compiling\n");
+  else format("SUCCESS compiling\n");
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
     return false;
   }
-  printf("size: %i\n", size);
+  format("size: %i\n", size);
   sprintf(header,"__eval",exprcnt);
   void (* fcn) () = tcc_get_symbol(tccs, header);
 
@@ -718,25 +718,25 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
 void print_cdecl(decl idecl){
  void inner_print(decl idecl){
     
-    type_def def = idecl.type;
+   type_def def = idecl.type;
     switch(idecl.type.kind){
     case TYPEDEF:
     case STRUCT:
     case SIMPLE:
     case POINTER:
       print_def(def,0,true);
-      printf("%s",idecl.name);
+      format("%s",idecl.name);
       break;
     case FUNCTION:
       
       print_def(*def.fcn.ret,0,true);
-      printf("%s( ",idecl.name);
+      format("%s( ",idecl.name);
       for(i64 i = 0;i<def.fcn.cnt; i++){
 	inner_print(def.fcn.args[i]);
 	if(i + 1 != def.fcn.cnt)
-	  printf(", ");
+	  format(", ");
       }
-      printf(")");
+      format(")");
       break;
     default:
       ERROR("Not supported: '%i'\n", def.kind);
@@ -744,21 +744,18 @@ void print_cdecl(decl idecl){
 
   }
 
-  inner_print(idecl);
-  printf(";\n\n\n");
+ inner_print(idecl);
+ format(";");
 }
-	  
+
 size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
-  fflush(stdout);
   FILE * f = fmemopen(buffer,buffer_len, "w");
-  FILE * oldstdout = stdout;
-  stdout = f;
-  print_cdecl(idecl);
-  fflush(f);
+  void go(){
+    print_cdecl(idecl);	  
+  }
+  with_format_out(f,go);
   size_t pos = ftell(f);  
   fclose(f);
-  stdout = oldstdout;
-  printf("CDECL:\n %s\n", buffer);
   return pos;  
 }
 
@@ -806,9 +803,9 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
   for(size_t i = 0; i < required_types_cnt; i++){
     type_def t = required_types[i];
-    printf("type %i: %s\n", i, t.ctypedef.name);
+    format("type %i: %s\n", i, t.ctypedef.name);
     if(t.kind == STRUCT){
-      printf("Printing struct\n");
+      format("Printing struct\n");
       char * name = t.cstruct.name;
       if(name != NULL){
 	size_t cnt;
@@ -818,7 +815,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
       }
     }
     if(t.kind == TYPEDEF){
-      printf("Printing typedef\n");
+      format("Printing typedef\n");
       type_def inner = *t.ctypedef.inner;
       if(inner.kind == STRUCT){
 	char * name = inner.cstruct.name;
@@ -837,7 +834,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 	
       }
       if(inner.kind == ENUM){
-	printf("Printing enum\n");	
+	format("Printing enum\n");	
 	size_t cnt = sprintf(locbuf, "typedef enum {\n");
 	locbuf += cnt;
 	restsize -= cnt;	
@@ -860,9 +857,9 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   for(size_t i = 0; i < required_types_cnt; i++){
 
     type_def t = required_types[i];
-    printf("writing definition %i to buffer..\n",t.kind);
+    format("writing definition %i to buffer..\n",t.kind);
     if(t.kind != STRUCT) continue;
-    printf("HAPPENS.. %s\n",t.cstruct.name);
+    format("HAPPENS.. %s\n",t.cstruct.name);
     size_t cnt = write_def_to_buffer(t,locbuf,restsize);
     locbuf += cnt;
     restsize -= cnt;
@@ -873,21 +870,21 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
 
   { // write code to buffer
-    printf("loading decl\n");
+    format("loading decl\n");
     char cdecl[200];
     memset(cdecl,0,200);
     decl dcl;
     dcl.name = name;
     dcl.type = t;
     load_cdecl(cdecl, 200, dcl);
-    printf("CDECL: %s\n", cdecl);
+    format("CDECL: %s\n", cdecl);
     size_t cnt = sprintf(locbuf, "%s\n",cdecl);
     locbuf += cnt;
     restsize -= cnt;	
 
   }
 
-  printf("buffer: \n******************\n%s\n******************", buf);
+  format("buffer: \n******************\n%s\n******************", buf);
   TCCState * tccs = mktccs();
 
   tcc_compile_string(tccs, buf);
@@ -895,7 +892,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   int size = tcc_relocate(tccs, NULL);
   char * codebuf = malloc(size);
   int fail = tcc_relocate(tccs, codebuf);
-  printf("RELOCATE: %i\n",!fail);
+  format("RELOCATE: %i\n",!fail);
   void * var = tcc_get_symbol(tccs, name);
   var_def vdef;
   vdef.name = name;
@@ -922,23 +919,23 @@ fcn_def defext(char * name, type_def type){
 }
 
 void print_string(char * string){
-  printf("%s", string);
+  format("%s", string);
 }
 	  
 void print_dep_graph(type_def * defs){
     for(int i = 0; type_def_cmp(void_def,defs[i]) == false; i++){
-      printf("%i ",defs[i].kind);
+      format("%i ",defs[i].kind);
       if(defs[i].kind == SIMPLE)
-	printf("%s ", defs[i].simple.cname);
+	format("%s ", defs[i].simple.cname);
       if(defs[i].kind == STRUCT){
 	if(defs[i].cstruct.name != NULL)
-	  printf("%s ", defs[i].cstruct.name);
+	  format("%s ", defs[i].cstruct.name);
       }
       if(defs[i].kind == TYPEDEF){
 	if(defs[i].ctypedef.name != NULL)
-	  printf("%s ", defs[i].ctypedef.name);
+	  format("%s ", defs[i].ctypedef.name);
       }
-      printf(" \n");
+      format(" \n");
     }	  
 }	  
 
@@ -951,22 +948,16 @@ bool lisp_compiler_test(){
   decl dcl;
   dcl.name = "test";
   dcl.type = void_ptr_def;
-  char * testd = malloc(10000);
-  printf("\n");
+  char * testd = calloc(1,10000);
   print_cdecl(dcl);
-  load_cdecl(testd+10, 10000, dcl);
-  printf("%i %i %i\n",'-','_','-');
-  for(int i = 0; i < 30; i++)
-    printf("%i ",testd[i]);
-  printf("testd: |%s|",testd + 10);
-  return false;
+  load_cdecl(testd, 10000, dcl);
   type_def defs[1000];
   for(size_t i = 0; i < array_count(defs);i++)
     defs[i] = void_def;
-  printf("Graphs..\n");
+  format("Graphs..\n");
   
   //print_dep_graph(defs);
-  //printf("\n..\n");	  
+  //format("\n..\n");	  
   make_dependency_graph(defs,type_def_def);
   make_dependency_graph(defs,decl_def);
   print_dep_graph(defs);
@@ -984,7 +975,7 @@ bool lisp_compiler_test(){
     fdef.is_extern = false;
     fdef.ptr = &print_string;
     fcn_def * var = (fcn_def *) compiler_define_variable(c, "print_string", fcn_def_def);
-    printf("VAR: %i\n", var);
+    format("VAR: %i\n", var);
     TEST_ASSERT(var != NULL);
     *var = fdef;
   }
@@ -1038,7 +1029,7 @@ bool lisp_compiler_test(){
   tccs_test2();
   type_def def = type_def_def;
   char buf[2000];
-  printf("%s",buf);
+  format("%s",buf);
  
   type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
@@ -1047,9 +1038,9 @@ bool lisp_compiler_test(){
   
   //type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
 
-  printf("variable var: %i %i\n", var, var2);
+  format("variable var: %i %i\n", var, var2);
 
-  char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
+  char * base_code = "(defvar format (extfcn \"format\" :str :c-varadic))";
   UNUSED(base_code);
   char * test_code = "(print_string \"Hello World\\n\")(print_string (glfwGetVersionString))";
 
@@ -1063,12 +1054,12 @@ bool lisp_compiler_test(){
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
-    printf("next: %s\n", next);
+    format("next: %s\n", next);
     int out = 2;
     next = lisp_parse(test_code,out_expr,&out);
-    printf("OUT: %i\n", out);
+    format("OUT: %i\n", out);
     for(int i = 0; i < out; i++){
-      printf("compiling..\n");
+      format("compiling..\n");
       if(!compile_expr(out_expr + i, c))
 	return false;
       delete_expr(out_expr + i);
@@ -1081,13 +1072,13 @@ bool lisp_compiler_test(){
 }
 
 void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
-  printf("Compiling %s\n", code);
+  format("Compiling %s\n", code);
   int fail = tcc_compile_string(tccs,code);
-  printf("COMPILE: %i\n",!fail);
+  format("COMPILE: %i\n",!fail);
   int size = tcc_relocate(tccs, NULL);
   char * codebuf = malloc(size);
   fail = tcc_relocate(tccs, codebuf);
-  printf("RELOCATE: %i\n",!fail);
+  format("RELOCATE: %i\n",!fail);
   return tcc_get_symbol(tccs, symbol);
 }
 
@@ -1099,17 +1090,17 @@ void tccs_test2(){
   TCCState * tccs = mktccs();
 
   float (* fcn)() =  tccs_compile_and_get(tccs, a, "calc_x");
-  printf("outp: %f\n", fcn());
+  format("outp: %f\n", fcn());
  
   tcc_delete(tccs);
   tccs = mktccs();
   tcc_add_symbol(tccs, "calc_x", fcn);
   int (* fcn2)() = tccs_compile_and_get(tccs, b, "calc_y");
-  printf("outp: %i\n", fcn2());
+  format("outp: %i\n", fcn2());
   tcc_delete(tccs);
 
   tccs = mktccs();
   float * var = tccs_compile_and_get(tccs, c, "cval");
-  printf("outp: %i\n", var);
+  format("outp: %i\n", var);
   tcc_delete(tccs);
 }
