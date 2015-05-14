@@ -114,6 +114,12 @@ type_def make_simple(char * name, char * cname){
   def.simple.cname = cname;
   return def;
 }
+type_def make_ptr(type_def * def){
+  type_def out;
+  out.kind = POINTER;
+  out.ptr.inner = def;
+  return out;
+}
 
 typedef struct _basic_defs{
   type_def type_def_def;
@@ -125,6 +131,8 @@ typedef struct _basic_defs{
 typedef struct _fcn_def{
   char * name;
   type_def type;
+  u8 is_extern;
+  void * ptr;
 }fcn_def;
 
 bool fcn_def_cmp(fcn_def a, fcn_def b){
@@ -139,8 +147,10 @@ typedef struct{
 }var_def;
 
 static type_def void_def;
+static type_def void_ptr_def;
 static type_def char_def;
 static type_def i64_def;
+static type_def u8_def;
 static type_def char_ptr_def;
 static type_def char_ptr_ptr_def;
 static type_def i64_ptr_def;
@@ -153,9 +163,12 @@ static type_def error_def;
 static type_def fcn_def_def;
 void load_defs(){
   void_def = make_simple("void", "void");
+  void_ptr_def = make_ptr(&void_def);
+	  
   error_def = make_simple("error","error");
   char_def = make_simple("char", "char");
   i64_def = make_simple("i64", "i64");
+  u8_def = make_simple("u8", "u8");
   char_ptr_def.kind = POINTER;
   char_ptr_def.ptr.inner = &char_def;
   char_ptr_ptr_def.kind = POINTER;
@@ -325,7 +338,7 @@ void load_defs(){
   }
   { // fcn_def
     fcn_def_def.kind = TYPEDEF;
-    static decl members[2];
+    static decl members[4];
     static type_def inner;
     fcn_def_def.ctypedef.name = "fcn_def";
     fcn_def_def.ctypedef.inner = &inner;
@@ -337,6 +350,10 @@ void load_defs(){
     members[0].type = char_ptr_def;
     members[1].name = "type";
     members[1].type = type_def_def;
+    members[2].name = "is_extern";
+    members[2].type = u8_def;
+    members[3].name = "ptr";
+    members[3].type = void_ptr_def;
   }
 }
 
@@ -353,7 +370,7 @@ void print_def(type_def type, int ind, bool is_decl){
   type_def inner;
   switch(type.kind){
   case SIMPLE:
-    printf("%*s %s ",ind, " ",type.simple.name);
+    printf("%*s%s ",ind, "",type.simple.name);
     break;
   case STRUCT:
     if(is_decl){
@@ -419,6 +436,7 @@ size_t write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
   FILE * oldstdout = stdout;
   stdout = f;
   print_def(def,0,false);
+  fflush(f);
   stdout = oldstdout;
   size_t pos = ftell(f);
   fclose(f);
@@ -565,6 +583,7 @@ void add_required_fcn(comp_state * s, fcn_def fdef){
 }
 	  
 static type_def compile_iexpr(comp_state * s, expr expr1);
+size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl);
 static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 
   fcn_def * fcn;
@@ -583,13 +602,22 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 	ERROR("Unknown function '%.*s'",sexpr2.strln,sexpr2.value);
 	return error_def;
       }
-      if(type_def_cmp(def, fcn->type.fcn.args[i].type)){
-	ERROR("Invalid argument %i for '%s'", i, fcn->name);
-	return error_def;
-      }
+      
       //inscribe(s,fcn->name);
       inscribe(s,"(");
     }else{
+      if(false == type_def_cmp(def, fcn->type.fcn.args[i -1].type)){
+	ERROR("Invalid argument %i for '%s'", i -1, fcn->name);
+	char buf[100];
+	load_cdecl(buf,100,fcn->type.fcn.args[i-1]);
+	printf("%s\n",buf);
+	decl arg;
+	arg.name = "arg";
+	arg.type = def;
+	load_cdecl(buf,100,arg);
+	printf("%s\n",buf);
+	return error_def;
+      }
       if(i != sexpr.sub_expr_count -1)
 	inscribe(s,",");
     }
@@ -622,22 +650,27 @@ static type_def compile_iexpr(comp_state * s, expr expr1){
 }
   
 void print_string(char * buf);
-void compile_expr(expr * e, compiler_state * lisp_state){
+size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl);
+bool compile_expr(expr * e, compiler_state * lisp_state){
 
   static TCCState * tccs;
   static int exprcnt = 0;
   tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
+  int libpathok = tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
+                      // /usr/lib/x86_64-linux-gnu/libglfw.so
+  printf("libpathok: %i\n", libpathok);
+  int libok = tcc_add_library(tccs, "glfw");
+  printf("libok: %i\n", libok);
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
   
-  exprcnt++;
   char * buf = malloc(1000);
   
   comp_state s = comp_state_make(buf);
   s.c = lisp_state;
   char header[100];
-  sprintf(header,"void test%i() {",++exprcnt);
+  sprintf(header,"void __eval() {");
   
   inscribe(&s, header);
   compile_iexpr(&s, *e);
@@ -647,53 +680,91 @@ void compile_expr(expr * e, compiler_state * lisp_state){
   char buffer[1000];
   char * locbuf = buffer;
   for(size_t i = 0; i < s.fcn_cnt; i++){
-    tcc_add_symbol(tccs, s.fcns[i].name, &print_string);
-    size_t written = sprintf(locbuf, "void %s (char * name);\n", s.fcns[i].name); 
+    fcn_def fcn = s.fcns[i];
+    if(fcn.is_extern == false){
+      tcc_add_symbol(tccs, fcn.name, fcn.ptr);
+    }
+    decl dcl;
+    dcl.name = fcn.name;
+    dcl.type = fcn.type;
+    size_t written = load_cdecl(locbuf,1000,dcl);
+    //size_t written = sprintf(locbuf, "extern void %s (char * name);\n", s.fcns[i].name); 
     locbuf += written;
   }
   sprintf(locbuf, "%s", s.buffer); 
-  printf("BUFFER: %s\n", buffer);
+  printf("*** BUFFER *** \n%s\n*********", buffer);
   int ok = tcc_compile_string(tccs,buffer);
-  if(!ok)
-    ERROR("Unable to compile %s\n",s.buffer);
+  if(ok != 0){
+    ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
+    return false;
+  }
   else printf("SUCCESS compiling\n");
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
+  if(size == -1){
+    ERROR("Unable to link %s\n",s.buffer);
+    return false;
+  }
   printf("size: %i\n", size);
-  sprintf(header,"test%i",exprcnt);
+  sprintf(header,"__eval",exprcnt);
   void (* fcn) () = tcc_get_symbol(tccs, header);
 
   if(fcn != NULL)
     fcn();
   tcc_delete(tccs);
   free(buf);
+  return true;
 }
 
-void load_cdecl(char * buffer, char * name, type_def decl){
-  
-  void inner_print(type_def idecl){
-    switch(idecl.kind){
-    case SIMPLE:
-      sprintf(buffer,"%s %s;",idecl.simple.cname, name);
-      break;
-    case STRUCT:
-      sprintf(buffer,"%s %s;",idecl.cstruct.name, name);
-      break;
+void print_cdecl(decl idecl){
+ void inner_print(decl idecl){
+    
+    type_def def = idecl.type;
+    switch(idecl.type.kind){
     case TYPEDEF:
-      sprintf(buffer,"%s %s;",idecl.ctypedef.name, name);
+    case STRUCT:
+    case SIMPLE:
+    case POINTER:
+      print_def(def,0,true);
+      printf("%s",idecl.name);
       break;
-      //case FUNCTION:
-      //sprintf(buffer,"%s %s %s");
-    default:
+    case FUNCTION:
       
-      ERROR("Not supported: '%i'\n", idecl.kind);
+      print_def(*def.fcn.ret,0,true);
+      printf("%s( ",idecl.name);
+      for(i64 i = 0;i<def.fcn.cnt; i++){
+	inner_print(def.fcn.args[i]);
+	if(i + 1 != def.fcn.cnt)
+	  printf(", ");
+      }
+      printf(")");
+      break;
+    default:
+      ERROR("Not supported: '%i'\n", def.kind);
     }
+
   }
-  inner_print(decl);
+  inner_print(idecl);
+  printf(";\n");
+}
+	  
+size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
+  fflush(stdout);
+  FILE * f = fmemopen(buffer,buffer_len, "w");
+  FILE * oldstdout = stdout;
+  stdout = f;
+  print_cdecl(idecl);
+  fflush(f);
+  size_t pos = ftell(f);  
+  fclose(f);
+  stdout = oldstdout;
+  printf("CDECL:\n %s\n", buffer);
+  return pos;  
 }
 
 TCCState * mktccs(){
   TCCState * tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
+  tcc_add_library(tccs,"./run");
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
   return tccs;
@@ -797,14 +868,18 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
     cnt = sprintf(locbuf, ";\n");
     locbuf += cnt;
     restsize -= cnt;	
-
+    
   }
 
   { // write code to buffer
     printf("loading decl\n");
-    char cdecl[100];
-    load_cdecl(cdecl, name, t);
-
+    char cdecl[200];
+    memset(cdecl,0,200);
+    decl dcl;
+    dcl.name = name;
+    dcl.type = t;
+    load_cdecl(cdecl, 200, dcl);
+    printf("CDECL: %s\n", cdecl);
     size_t cnt = sprintf(locbuf, "%s\n",cdecl);
     locbuf += cnt;
     restsize -= cnt;	
@@ -839,6 +914,8 @@ fcn_def defext(char * name, type_def type){
   fcn_def fdef;
   fdef.name = name;
   fdef.type = type;
+  fdef.is_extern = true;
+  fdef.ptr = NULL;
   //
   return fdef;
 }
@@ -868,6 +945,17 @@ bool lisp_compiler_test(){
   compiler_state * c = compiler_make();
   cs = c;
   load_defs();
+  print_def(void_def,0,false);
+	  
+  decl dcl;
+  dcl.name = "test";
+  dcl.type = void_ptr_def;
+  char testd[1000];
+  printf("\n");
+  print_cdecl(dcl);
+  load_cdecl(testd, sizeof(testd), dcl);
+  printf("testd: |%s|",testd);
+  return false;
   type_def defs[1000];
   for(size_t i = 0; i < array_count(defs);i++)
     defs[i] = void_def;
@@ -888,7 +976,9 @@ bool lisp_compiler_test(){
     print_string_def.fcn.ret = &void_def;
     print_string_def.fcn.cnt = array_count(args);
     print_string_def.fcn.args = args;
-    fcn_def fdef = defext("print_string", fcn_def_def);
+    fcn_def fdef = defext("print_string", print_string_def);
+    fdef.is_extern = false;
+    fdef.ptr = &print_string;
     fcn_def * var = (fcn_def *) compiler_define_variable(c, "print_string", fcn_def_def);
     printf("VAR: %i\n", var);
     TEST_ASSERT(var != NULL);
@@ -911,6 +1001,28 @@ bool lisp_compiler_test(){
     UNUSED(fdef);
     //fcn_def * var = (fcn_def *) compiler_define_variable(c, "defext", defext_def);
     //*var = fdef;
+  }
+  {
+    static type_def voidstr_def;
+    voidstr_def.kind = FUNCTION;
+    voidstr_def.fcn.cnt = 0;
+    voidstr_def.fcn.ret = &char_ptr_def;
+    voidstr_def.fcn.args = NULL;
+    fcn_def fdef = defext("glfwGetVersionString",voidstr_def);
+    
+    fcn_def * var = (fcn_def *) compiler_define_variable(c, "glfwGetVersionString", fcn_def_def);
+    *var = fdef;
+  }
+  {
+    static type_def voidstr_def;
+    voidstr_def.kind = FUNCTION;
+    voidstr_def.fcn.cnt = 0;
+    voidstr_def.fcn.ret = &void_def;
+    voidstr_def.fcn.args = NULL;
+    fcn_def fdef = defext("glfwInit",voidstr_def);
+    
+    fcn_def * var = (fcn_def *) compiler_define_variable(c, "glfwInit", fcn_def_def);
+    *var = fdef;
   }
 
   int * list = NULL;
@@ -935,7 +1047,7 @@ bool lisp_compiler_test(){
 
   char * base_code = "(defvar printf (extfcn \"printf\" :str :c-varadic))";
   UNUSED(base_code);
-  char * test_code = "(print_string \"Hello World\\n\")(print_string \"Hello Sailor!\\n\")";
+  char * test_code = "(print_string \"Hello World\\n\")(print_string (glfwGetVersionString))";
 
   //type_def def_void = compiler_define_simple_type(c, ":void", "void");
   //type_def def_i32 = compiler_define_simple_type(c,":i32", "int");
@@ -953,7 +1065,8 @@ bool lisp_compiler_test(){
     printf("OUT: %i\n", out);
     for(int i = 0; i < out; i++){
       printf("compiling..\n");
-      compile_expr(out_expr + i, c);
+      if(!compile_expr(out_expr + i, c))
+	return false;
       delete_expr(out_expr + i);
     }
     if(out == 0)
