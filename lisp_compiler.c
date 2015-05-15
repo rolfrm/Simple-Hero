@@ -1012,14 +1012,50 @@ bool lisp_compiler_test(){
   return true;
 }
 
+int check_expression(char * buffer){
+  int status = 0;
+  while(*buffer){
+    if(*buffer == '(')
+      status += 1;
+    if(*buffer == ')')
+      status -= 1;
+    if(*buffer == '\\')
+      buffer++;
+    buffer++;
+  }
+  return status;
+}
+
 bool start_read_eval_print_loop(compiler_state * c){
   format("C-LISP REPL\n");
+
+
+  char * expr_reader = NULL;
+  size_t cnt;
+  FILE * mem = NULL;
   while(true){
-    format(">");
+    if(expr_reader == NULL){
+      cnt = 0;
+      mem = open_memstream(&expr_reader,&cnt);
+      format(">");
+    }else{
+      format(" ");
+    }
+
     char * data = NULL;
-    size_t cnt = 0;
-    getline(&data,&cnt,stdin);
-    char * next = data;
+    size_t cnt2;
+    getline(&data,&cnt2,stdin);
+    with_format_out(mem,lambda(void,(){format("%s",data);}));
+    fflush(mem);
+    int expr_state = check_expression(expr_reader);
+    if(expr_state < 0){
+      ERROR("Invalid paren matching");
+      goto reset;
+    }
+    if(expr_state > 0)
+      continue;
+    printf("Expr state: %i %s\n", expr_state, expr_reader);
+    char * next = expr_reader;
     while(next != NULL && *next != 0){
       expr out_expr[2];
       int out = array_count(out_expr);
@@ -1041,7 +1077,7 @@ bool start_read_eval_print_loop(compiler_state * c){
 
 	  void (* __eval) () = cexpr.fcn;
 	  __eval();
-	  printf("unit\n");
+	  printf("() : unit\n");
 	}
 	else if(type_def_cmp(cexpr.result_type, i64_def)){
 	  i64 (*eval) () = cexpr.fcn;
@@ -1053,6 +1089,11 @@ bool start_read_eval_print_loop(compiler_state * c){
       if(out == 0)
 	break;
     }
+  reset:
+    fclose(mem);
+    free(expr_reader);
+    expr_reader = NULL;
+    cnt = 0;
   } 
   return true;
 }
