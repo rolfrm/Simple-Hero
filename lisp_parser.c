@@ -226,7 +226,7 @@ char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
 }
 
 static bool test_infinite_bug(){
-  // Turned out to not be a bug.
+  // this turned out to not be a bug.
   char * code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString))";
   char * next = code;
   expr out_expr[2];

@@ -440,11 +440,6 @@ size_t write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
   return pos;
 }
 
-void print_compiler_state(compiler_state * c){
-  format("Compiler state: \n ");
-  format("printing variables\n");
-}
-
 compiler_state * compiler_make(){
   return calloc(1, sizeof(compiler_state));
 }
@@ -463,14 +458,10 @@ void tccerror(void * opaque, const char * msg){
 }
 
 typedef struct{
-  
-}scope_vars;
-
-typedef struct{
   compiler_state * c;
   char * buffer;
   char * buffer_ptr;
-  char * end_of_buffer;
+  // required functions
   fcn_def * fcns;
   size_t fcn_cnt;
 }comp_state;
@@ -638,29 +629,20 @@ size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl);
 bool compile_expr(expr * e, compiler_state * lisp_state){
 
   static TCCState * tccs;
-  static int exprcnt = 0;
   tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
-  int libpathok = tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
-  // /usr/lib/x86_64-linux-gnu/libglfw.so
-  format("libpathok: %i\n", libpathok);
-  int libok = tcc_add_library(tccs, "glfw");
-  format("libok: %i\n", libok);
+  tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
+  tcc_add_library(tccs, "glfw");
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
-  
+
   char * buf = malloc(1000);
-  
   comp_state s = comp_state_make(buf);
   s.c = lisp_state;
-  char header[100];
-  sprintf(header,"void __eval() {");
-  
-  inscribe(&s, header);
+  inscribe(&s, "void __eval() {");
   compile_iexpr(&s, *e);
   inscribe(&s, ";");
   inscribe(&s, "}");
-  format("c code: %s\n",s.buffer);
   char buffer[1000];
   char * locbuf = buffer;
   for(size_t i = 0; i < s.fcn_cnt; i++){
@@ -672,26 +654,22 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
     dcl.name = fcn.name;
     dcl.type = fcn.type;
     size_t written = load_cdecl(locbuf,1000,dcl);
-    //size_t written = sprintf(locbuf, "extern void %s (char * name);\n", s.fcns[i].name); 
     locbuf += written;
   }
   sprintf(locbuf, "%s", s.buffer); 
-  format("*** BUFFER *** \n%s\n*********", buffer);
   int ok = tcc_compile_string(tccs,buffer);
   if(ok != 0){
     ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
     return false;
   }
-  else format("SUCCESS compiling\n");
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
     return false;
   }
-  format("size: %i\n", size);
-  sprintf(header,"__eval",exprcnt);
-  void (* fcn) () = tcc_get_symbol(tccs, header);
-
+  
+  void (* fcn) () = tcc_get_symbol(tccs, "__eval");
+  TEST_ASSERT(fcn != NULL);
   if(fcn != NULL)
     fcn();
   tcc_delete(tccs);
@@ -729,7 +707,7 @@ void print_cdecl(decl idecl){
   }
 
   inner_print(idecl);
-  format(";");
+  format(";\n");
 }
 
 size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
@@ -861,7 +839,6 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
     dcl.name = name;
     dcl.type = t;
     load_cdecl(cdecl, 200, dcl);
-    format("CDECL: %s\n", cdecl);
     size_t cnt = sprintf(locbuf, "%s\n",cdecl);
     locbuf += cnt;
     restsize -= cnt;	
@@ -978,8 +955,8 @@ bool lisp_compiler_test(){
     
     fcn_def fdef = defext("defext",defext_def);
     UNUSED(fdef);
-    //fcn_def * var = (fcn_def *) compiler_define_variable(c, "defext", defext_def);
-    //*var = fdef;
+    fcn_def * var = (fcn_def *) compiler_define_variable(c, "defext", fcn_def_def);
+    *var = fdef;
   }
   {
     static type_def voidstr_def;
@@ -1024,21 +1001,16 @@ bool lisp_compiler_test(){
 
   char * base_code = "(defvar format (extfcn \"format\" :str :c-varadic))";
   UNUSED(base_code);
-  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString))";
-  print_compiler_state(c);
+  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\")";
   
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
-    format("next: %i\n", next);
-    format("next: %s\n", next);
     int out = 2;
     char * prev = next;
     next = lisp_parse(next, out_expr, &out);
     TEST_ASSERT(prev != next);
-    format("OUT: %i\n", out);
     for(int i = 0; i < out; i++){
-      format("compiling..\n");
       TEST_ASSERT(compile_expr(out_expr + i, c));
       delete_expr(out_expr + i);
     }
