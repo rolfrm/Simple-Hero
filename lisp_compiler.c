@@ -120,12 +120,6 @@ type_def make_ptr(type_def * def){
   return out;
 }
 
-typedef struct _basic_defs{
-  type_def type_def_def;
-  type_def decl_def;
-  type_def type_def_kind_def;
-}basic_defs;
-
 typedef struct _fcn_def{
   char * name;
   type_def type;
@@ -703,7 +697,6 @@ void print_cdecl(decl idecl){
     default:
       ERROR("Not supported: '%i'\n", def.kind);
     }
-
   }
 
   inner_print(idecl);
@@ -724,7 +717,6 @@ size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
 TCCState * mktccs(){
   TCCState * tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
-  tcc_add_library(tccs,"./run");
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
   return tccs;
@@ -743,7 +735,7 @@ size_t get_required_types(compiler_state * c, type_def main_def, type_def * ts, 
 
 void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   // this is a bit complex. I need to run the code which defines and sets that variable
-  UNUSED(c);
+  //UNUSED(c);
   type_def required_types[100];
   for(size_t i = 0; i < array_count(required_types); i++)
     required_types[i] = void_def;
@@ -765,9 +757,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
   for(size_t i = 0; i < required_types_cnt; i++){
     type_def t = required_types[i];
-    format("type %i: %s\n", i, t.ctypedef.name);
     if(t.kind == STRUCT){
-      format("Printing struct\n");
       char * name = t.cstruct.name;
       if(name != NULL){
 	size_t cnt;
@@ -777,7 +767,6 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
       }
     }
     if(t.kind == TYPEDEF){
-      format("Printing typedef\n");
       type_def inner = *t.ctypedef.inner;
       if(inner.kind == STRUCT){
 	char * name = inner.cstruct.name;
@@ -786,17 +775,13 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 	if(name == NULL){
 	  sprintf(_namebuf, "_%s_", t.ctypedef.name);
 	  name = _namebuf;
-	}
-	//cnt = sprintf(locbuf, "struct %s;\n",name);
-	//locbuf += cnt;
-	//restsize -= cnt;	
+	}	
 	cnt = sprintf(locbuf, "typedef struct %s %s;\n", name, t.ctypedef.name);
 	locbuf += cnt;
 	restsize -= cnt;	
 	
       }
       if(inner.kind == ENUM){
-	format("Printing enum\n");	
 	size_t cnt = sprintf(locbuf, "typedef enum {\n");
 	locbuf += cnt;
 	restsize -= cnt;	
@@ -817,11 +802,8 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
 
   for(size_t i = 0; i < required_types_cnt; i++){
-
     type_def t = required_types[i];
-    format("writing definition %i to buffer..\n",t.kind);
     if(t.kind != STRUCT) continue;
-    format("HAPPENS.. %s\n",t.cstruct.name);
     size_t cnt = write_def_to_buffer(t,locbuf,restsize);
     locbuf += cnt;
     restsize -= cnt;
@@ -832,7 +814,6 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
 
   { // write code to buffer
-    format("loading decl\n");
     char cdecl[200];
     memset(cdecl,0,200);
     decl dcl;
@@ -845,15 +826,13 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 
   }
 
-  format("buffer: \n******************\n%s\n******************", buf);
   TCCState * tccs = mktccs();
 
   tcc_compile_string(tccs, buf);
   
   int size = tcc_relocate(tccs, NULL);
   char * codebuf = malloc(size);
-  int fail = tcc_relocate(tccs, codebuf);
-  format("RELOCATE: %i\n",!fail);
+  tcc_relocate(tccs, codebuf);
   void * var = tcc_get_symbol(tccs, name);
   var_def vdef;
   vdef.name = name;
