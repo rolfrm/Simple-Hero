@@ -9,6 +9,8 @@
 #include "lisp_parser.h"
 #include <libtcc.h>
 
+
+
 typedef enum {
   SIMPLE = 0,
   FUNCTION = 1,
@@ -101,6 +103,8 @@ struct _decl{
   char * name;
   type_def type;
 };
+
+void print_cdecl(decl idecl);
 
 struct _compiler_state;
 typedef struct _compiler_state compiler_state;
@@ -370,7 +374,6 @@ void print_def(type_def type, int ind, bool is_decl){
       format("%*s struct %s{\n",ind, "  ", type.cstruct.name == NULL ? "" : type.cstruct.name);
       
       for(i64 i = 0; i < type.cstruct.cnt; i++){
-	//format("STRUCT MEMBER %i\n",type.cstruct.members[i].type.kind);
 	print_def(type.cstruct.members[i].type, ind + 1, true);
 	if(type.cstruct.members[i].name != NULL)
 	  format("%s;\n",type.cstruct.members[i].name);
@@ -418,7 +421,7 @@ void print_def(type_def type, int ind, bool is_decl){
     
     break;
   default:
-    format("not implemented %i", type.kind);
+    ERROR("not implemented %i", type.kind);
   }
 }
 
@@ -454,34 +457,17 @@ void tccerror(void * opaque, const char * msg){
 typedef struct{
   compiler_state * c;
   char * buffer;
-  char * buffer_ptr;
   // required functions
   fcn_def * fcns;
   size_t fcn_cnt;
 }comp_state;
 
-comp_state comp_state_make(char * buffer){
+comp_state comp_state_make(){
   comp_state out;
-  out.buffer = buffer;
-  out.buffer_ptr = buffer;
+  out.buffer = NULL;
   out.fcns = NULL;
   out.fcn_cnt = 0;
   return out;
-}
-
-void comp_state_delete(comp_state s){
-  free(s.buffer);
-}
-
-static void inscriben(comp_state * state, char * data, size_t len){
-  strncpy(state->buffer_ptr,data,len);
-  state->buffer_ptr += len;
-  state->buffer_ptr[0] = 0;
-}
-
-static void inscribe(comp_state * state, char * data){
-  size_t len = strlen(data);
-  inscriben(state,data,len);
 }
 
 fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
@@ -551,8 +537,13 @@ void add_required_fcn(comp_state * s, fcn_def fdef){
   list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
 }
 	  
+type_def compile_cast(expr arg1, expr arg2){
+  UNUSED(arg1);UNUSED(arg2);
+  return error_def;
+}
+
 static type_def compile_iexpr(comp_state * s, expr expr1);
-size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl);
+
 static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 
   fcn_def * fcn;
@@ -560,10 +551,6 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 
     type_def def = compile_iexpr(s, sexpr.sub_exprs[i]);
     if(i == 0){ 
-      //  if(def.kind != POINTER || !type_def_cmp(*def.kind.ptr.inner, char_ptr_def)){
-      //	ERROR("Macros are not supported yet!");
-      //	return error_def;
-      //  }
       value_expr sexpr2 = sexpr.sub_exprs[i].value;
       fcn = get_fcn_def(s->c,sexpr2.value,sexpr2.strln);
       add_required_fcn(s, *fcn);
@@ -572,41 +559,38 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
 	return error_def;
       }
       
-      //inscribe(s,fcn->name);
-      inscribe(s,"(");
+      format("(");
     }else{
       if(false == type_def_cmp(def, fcn->type.fcn.args[i -1].type)){
 	ERROR("Invalid argument %i for '%s'", i -1, fcn->name);
-	char buf[100];
-	load_cdecl(buf,100,fcn->type.fcn.args[i-1]);
-	format("%s\n",buf);
+	print_cdecl(fcn->type.fcn.args[i-1]);
 	decl arg;
 	arg.name = "arg";
 	arg.type = def;
-	load_cdecl(buf,100,arg);
-	format("%s\n",buf);
+	print_cdecl(arg);
 	return error_def;
       }
       if(i != sexpr.sub_expr_count -1)
-	inscribe(s,",");
+	format(", ");
     }
   }
-  inscribe(s,")");
+  format(")");
   return *(fcn->type.fcn.ret);
 }
 
 static type_def compile_value(comp_state * state, value_expr vexpr){
+  UNUSED(state);
   if(vexpr.type == STRING){
-    inscribe(state,"\"");
-    inscriben(state,vexpr.value,vexpr.strln);
-    inscribe(state,"\"");
+    format("\"%.*s\"",vexpr.strln, vexpr.value);
     return char_ptr_def;
   }else if(vexpr.type == KEYWORD || vexpr.type == SYMBOL){
-    inscriben(state,vexpr.value,vexpr.strln);
+    format("%.*s ",vexpr.strln,vexpr.value);
     return void_def;
+  }else if(vexpr.type == NUMBER){
+    format("%.*s ",vexpr.strln,vexpr.value);
+    return i64_def;
   }
   ERROR("Unhandled type '%i'", vexpr.type);
-  format("-->|%s|\n", vexpr.value);
   return error_def;
 }
 
@@ -619,11 +603,18 @@ static type_def compile_iexpr(comp_state * s, expr expr1){
   return error_def;
 }
   
+typedef struct{
+  type_def result_type;
+  void * fcn;
+}compiled_expr;
+
 void print_string(char * buf);
-size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl);
-bool compile_expr(expr * e, compiler_state * lisp_state){
+compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
 
   static TCCState * tccs;
+  compiled_expr err;
+  err.fcn = NULL;
+  err.result_type = error_def;
   tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
   tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
@@ -631,45 +622,64 @@ bool compile_expr(expr * e, compiler_state * lisp_state){
   tcc_set_error_func(tccs, NULL, tccerror);
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
 
-  char * buf = malloc(1000);
-  comp_state s = comp_state_make(buf);
+  size_t cdecl_size = 0;
+  comp_state s = comp_state_make();
   s.c = lisp_state;
-  inscribe(&s, "void __eval() {");
-  compile_iexpr(&s, *e);
-  inscribe(&s, ";");
-  inscribe(&s, "}");
-  char buffer[1000];
-  char * locbuf = buffer;
-  for(size_t i = 0; i < s.fcn_cnt; i++){
-    fcn_def fcn = s.fcns[i];
-    if(fcn.is_extern == false){
-      tcc_add_symbol(tccs, fcn.name, fcn.ptr);
-    }
-    decl dcl;
-    dcl.name = fcn.name;
-    dcl.type = fcn.type;
-    size_t written = load_cdecl(locbuf,1000,dcl);
-    locbuf += written;
-  }
-  sprintf(locbuf, "%s", s.buffer); 
-  int ok = tcc_compile_string(tccs,buffer);
+  FILE * stream = open_memstream(&s.buffer, &cdecl_size);
+  type_def td;
+  with_format_out(stream,lambda(void,(){
+	td = compile_iexpr(&s, *e);
+      }));
+  fclose(stream);
+
+  char * prebuffer = NULL;
+  size_t pre_size = 0;
+  stream = open_memstream(&prebuffer,&pre_size);
+  with_format_out(stream,lambda(void,(){
+	format("%s", "#include \"cstd_header.h\"\n");
+	for(size_t i = 0; i < s.fcn_cnt; i++){
+	  fcn_def fcn = s.fcns[i];
+	  if(fcn.is_extern == false){
+	    tcc_add_symbol(tccs, fcn.name, fcn.ptr);
+	  }
+	  decl dcl;
+	  dcl.name = fcn.name;
+	  dcl.type = fcn.type;
+	  print_cdecl(dcl);
+	}
+	print_def(td,0,true);
+	format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
+      }));
+
+  fclose(stream);
+  printf("compiling |\n%s\n",prebuffer);
+  int ok = tcc_compile_string(tccs,prebuffer);
+
   if(ok != 0){
     ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
-    return false;
+    return err;
   }
   int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
-    return false;
+    return err;
   }
   
-  void (* fcn) () = tcc_get_symbol(tccs, "__eval");
-  TEST_ASSERT(fcn != NULL);
-  if(fcn != NULL)
-    fcn();
-  tcc_delete(tccs);
-  free(buf);
-  return true;
+  void * fcn = tcc_get_symbol(tccs, "__eval");
+  
+  //((void (*)())fcn)();
+  //printf("DID IT! %i\n",fcn);
+
+  //tcc_delete(tccs);
+  free(prebuffer);
+  free(s.buffer);
+  
+  if(fcn == NULL){
+    ERROR("Unable to create function");
+    return err;
+  }
+  compiled_expr fdef = {td, fcn};
+  return fdef;
 }
 
 void print_cdecl(decl idecl){
@@ -899,14 +909,9 @@ bool lisp_compiler_test(){
   type_def defs[1000];
   for(size_t i = 0; i < array_count(defs);i++)
     defs[i] = void_def;
-  format("Graphs..\n");
-  
-  //print_dep_graph(defs);
-  //format("\n..\n");	  
   make_dependency_graph(defs,type_def_def);
   make_dependency_graph(defs,decl_def);
-  print_dep_graph(defs);
-	  
+
   { // print_string definition
     static type_def print_string_def;
     static decl args[1];
@@ -995,7 +1000,8 @@ bool lisp_compiler_test(){
     next = lisp_parse(next, out_expr, &out);
     TEST_ASSERT(prev != next);
     for(int i = 0; i < out; i++){
-      TEST_ASSERT(compile_expr(out_expr + i, c));
+      compiled_expr expr = compile_expr(out_expr + i, c);
+      TEST_ASSERT(NULL != expr.fcn);
       delete_expr(out_expr + i);
     }
     if(out == 0)
@@ -1024,8 +1030,24 @@ bool start_read_eval_print_loop(compiler_state * c){
 	continue;
       }
       for(int i = 0; i < out; i++){
-	if(false == compile_expr(out_expr + i, c))
+	compiled_expr cexpr = compile_expr(out_expr + i, c);
+	if(NULL == cexpr.fcn){
 	  ERROR("Unable to compile..\n");
+	}else if(type_def_cmp(cexpr.result_type, char_ptr_def)){
+	  char * (*eval) () = cexpr.fcn;
+	    printf("'%s' : char*\n", eval());
+	  }
+	else if(type_def_cmp(cexpr.result_type, void_def)){
+
+	  void (* __eval) () = cexpr.fcn;
+	  __eval();
+	  printf("unit\n");
+	}
+	else if(type_def_cmp(cexpr.result_type, i64_def)){
+	  i64 (*eval) () = cexpr.fcn;
+	  eval();
+	  printf("%i : i64\n",eval());
+	}
 	delete_expr(out_expr + i);
       }
       if(out == 0)
