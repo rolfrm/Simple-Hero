@@ -595,7 +595,7 @@ static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
   return *(fcn->type.fcn.ret);
 }
 
-static type_def compile_value(comp_state * state,value_expr vexpr){
+static type_def compile_value(comp_state * state, value_expr vexpr){
   if(vexpr.type == STRING){
     inscribe(state,"\"");
     inscriben(state,vexpr.value,vexpr.strln);
@@ -605,7 +605,8 @@ static type_def compile_value(comp_state * state,value_expr vexpr){
     inscriben(state,vexpr.value,vexpr.strln);
     return void_def;
   }
-  ERROR("Unhandled type '%i'",vexpr.type);
+  ERROR("Unhandled type '%i'", vexpr.type);
+  format("-->|%s|\n", vexpr.value);
   return error_def;
 }
 
@@ -704,6 +705,7 @@ void print_cdecl(decl idecl){
 }
 
 size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
+  
   FILE * f = fmemopen(buffer,buffer_len, "w");
   void go(){
     print_cdecl(idecl);	  
@@ -814,16 +816,18 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   }
 
   { // write code to buffer
-    char cdecl[200];
-    memset(cdecl,0,200);
+    char * cdecl;
+    size_t cdecl_size = 0;
+    FILE * stream = open_memstream(&cdecl, &cdecl_size);
     decl dcl;
     dcl.name = name;
     dcl.type = t;
-    load_cdecl(cdecl, 200, dcl);
-    size_t cnt = sprintf(locbuf, "%s\n",cdecl);
+    with_format_out(stream, lambda(void,(){print_cdecl(dcl);}));
+    fclose(stream);
+    size_t cnt = sprintf(locbuf, "%s\n", cdecl);
+    free(cdecl);
     locbuf += cnt;
     restsize -= cnt;	
-
   }
 
   TCCState * tccs = mktccs();
@@ -880,6 +884,7 @@ void print_dep_graph(type_def * defs){
 }	  
 
 bool lisp_compiler_test(){
+
   compiler_state * c = compiler_make();
   cs = c;
   load_defs();
@@ -996,6 +1001,37 @@ bool lisp_compiler_test(){
     if(out == 0)
       break;
   }
+  bool start_read_eval_print_loop(compiler_state * c);
+  return start_read_eval_print_loop(c);
+  return true;
+}
+
+bool start_read_eval_print_loop(compiler_state * c){
+  format("C-LISP REPL\n");
+  while(true){
+    format(">");
+    char * data = NULL;
+    size_t cnt = 0;
+    getline(&data,&cnt,stdin);
+    char * next = data;
+    while(next != NULL && *next != 0){
+      expr out_expr[2];
+      int out = array_count(out_expr);
+      char * prev = next;
+      next = lisp_parse(next, out_expr, &out);
+      if(prev == next){
+	ERROR("Unable to parse..\n");
+	continue;
+      }
+      for(int i = 0; i < out; i++){
+	if(false == compile_expr(out_expr + i, c))
+	  ERROR("Unable to compile..\n");
+	delete_expr(out_expr + i);
+      }
+      if(out == 0)
+	break;
+    }
+  } 
   return true;
 }
 

@@ -210,7 +210,10 @@ void print_expr(expr * expr1){
 char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
   for(int i = 0 ; i < *out_exprs_count; i++){
     code = take_while(code, is_whitespace);
-
+    if(*code == 0){
+      *out_exprs_count = i;
+      return code;
+    }
     char * cn = parse_expr(code, out_exprs + i);
     if(cn == NULL){
       *out_exprs_count = i;
@@ -243,7 +246,7 @@ bool test_lisp_parser(){
   expr exprs[10];
   int exprs_count = 10;
 
-  lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
+  lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)\n",exprs,&exprs_count);
   printf("lisp exprs %i\n", exprs_count);
   TEST_ASSERT(exprs_count == 2);
   for(int i = 0; i < exprs_count; i++)
