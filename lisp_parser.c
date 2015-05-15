@@ -225,6 +225,20 @@ char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
   return code;
 }
 
+static bool test_infinite_bug(){
+  // Turned out to not be a bug.
+  char * code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString))";
+  char * next = code;
+  expr out_expr[2];
+  while(next != NULL && *next != 0){
+    int out = array_count(out_expr);
+    char * prev = next;
+    next = lisp_parse(next,out_expr,&out);
+    TEST_ASSERT(prev != next);
+  }
+  return TEST_SUCCESS;
+}
+
 bool test_lisp_parser(){
   expr exprs[10];
   int exprs_count = 10;
@@ -232,8 +246,8 @@ bool test_lisp_parser(){
   lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)",exprs,&exprs_count);
   printf("lisp exprs %i\n", exprs_count);
   TEST_ASSERT(exprs_count == 2);
-
   for(int i = 0; i < exprs_count; i++)
     delete_expr(exprs + i);
+  TEST(test_infinite_bug);
   return TEST_SUCCESS;
 }

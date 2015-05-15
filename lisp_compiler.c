@@ -1034,7 +1034,7 @@ bool lisp_compiler_test(){
     format("next: %s\n", next);
     int out = 2;
     char * prev = next;
-    next = lisp_parse(test_code,out_expr,&out);
+    next = lisp_parse(next, out_expr, &out);
     TEST_ASSERT(prev != next);
     format("OUT: %i\n", out);
     for(int i = 0; i < out; i++){
