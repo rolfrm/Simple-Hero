@@ -9,8 +9,6 @@
 #include "lisp_parser.h"
 #include <libtcc.h>
 
-
-
 typedef enum {
   SIMPLE = 0,
   FUNCTION = 1,
@@ -382,7 +380,6 @@ void print_def(type_def type, int ind, bool is_decl){
     }
     break;
   case POINTER:
-    //format("PTR  %i\n",type.ptr.inner->kind);
     print_def(*(type.ptr.inner), ind, true);
     format("* ");
     break;
@@ -484,10 +481,8 @@ fcn_def * get_fcn_def(compiler_state * c, char * name, size_t name_len){
 
 void make_dependency_graph(type_def * defs, type_def def){
 	  
-  if(type_def_cmp(void_def,def))
-    return;
-  
-  
+  if(type_def_cmp(void_def,def)) return;
+   
   switch(def.kind){
   case UNION:
     for(int i = 0; i < def.cunion.cnt; i++){
@@ -627,9 +622,7 @@ compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
   s.c = lisp_state;
   FILE * stream = open_memstream(&s.buffer, &cdecl_size);
   type_def td;
-  with_format_out(stream,lambda(void,(){
-	td = compile_iexpr(&s, *e);
-      }));
+  with_format_out(stream,lambda(void,(){ td = compile_iexpr(&s, *e); }));
   fclose(stream);
 
   char * prebuffer = NULL;
@@ -652,25 +645,21 @@ compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
       }));
 
   fclose(stream);
-  printf("compiling |\n%s\n",prebuffer);
   int ok = tcc_compile_string(tccs,prebuffer);
 
   if(ok != 0){
     ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
     return err;
   }
-  int size = tcc_relocate(tccs, TCC_RELOCATE_AUTO);
+  size_t size = tcc_relocate(tccs, NULL);
+  tcc_relocate(tccs,malloc(size));
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
     return err;
   }
   
   void * fcn = tcc_get_symbol(tccs, "__eval");
-  
-  //((void (*)())fcn)();
-  //printf("DID IT! %i\n",fcn);
-
-  //tcc_delete(tccs);
+  tcc_delete(tccs);
   free(prebuffer);
   free(s.buffer);
   
@@ -977,19 +966,11 @@ bool lisp_compiler_test(){
   TEST_ASSERT(list_cnt == 5);
   TEST_ASSERT(list[4] = 4);
   tccs_test2();
-  type_def def = type_def_def;
-  char buf[2000];
-  format("%s",buf);
- 
-  type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", def);
+  type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", type_def_def);
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
-  *((type_def *) var) = def;
+  *((type_def *) var) = type_def_def;
   *((type_def *) var2) = decl_def;
   
-  //type_def * extfcn = (type_def *) compiler_define_variable(c, "defext", def);
-
-  char * base_code = "(defvar format (extfcn \"format\" :str :c-varadic))";
-  UNUSED(base_code);
   char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\")";
   
   expr out_expr[2];
@@ -1028,7 +1009,6 @@ int check_expression(char * buffer){
 
 bool start_read_eval_print_loop(compiler_state * c){
   format("C-LISP REPL\n");
-
 
   char * expr_reader = NULL;
   size_t cnt;
