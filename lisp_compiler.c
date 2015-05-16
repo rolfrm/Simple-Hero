@@ -532,11 +532,6 @@ void add_required_fcn(comp_state * s, fcn_def fdef){
   list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
 }
 	  
-type_def compile_cast(expr arg1, expr arg2){
-  UNUSED(arg1);UNUSED(arg2);
-  return error_def;
-}
-
 static type_def compile_iexpr(comp_state * s, expr expr1);
 
 static type_def compile_sexpr(comp_state * s, sub_expr sexpr){
@@ -597,14 +592,19 @@ static type_def compile_iexpr(comp_state * s, expr expr1){
   }
   return error_def;
 }
-  
+	  
 typedef struct{
   type_def result_type;
   void * fcn;
 }compiled_expr;
 
+__thread compiler_state * lisp_state = NULL;
+void compiler_set_state(compiler_state * ls){
+  lisp_state = ls;
+}
+
 void print_string(char * buf);
-compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
+compiled_expr compile_expr(expr * e){
 
   static TCCState * tccs;
   compiled_expr err;
@@ -651,7 +651,7 @@ compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
     ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
     return err;
   }
-  size_t size = tcc_relocate(tccs, NULL);
+  int size = tcc_relocate(tccs, NULL);
   tcc_relocate(tccs,malloc(size));
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
@@ -671,6 +671,12 @@ compiled_expr compile_expr(expr * e, compiler_state * lisp_state){
   return fdef;
 }
 
+type_def compile_cast(expr arg1, expr arg2){
+  UNUSED(arg1);UNUSED(arg2);
+  compile_expr(&arg2);
+  return error_def;
+}
+	  
 void print_cdecl(decl idecl){
   void inner_print(decl idecl){
     
@@ -885,7 +891,7 @@ void print_dep_graph(type_def * defs){
 bool lisp_compiler_test(){
 
   compiler_state * c = compiler_make();
-  cs = c;
+  compiler_set_state(c);
   load_defs();
   print_def(void_def,0,false);
 	  
@@ -981,15 +987,15 @@ bool lisp_compiler_test(){
     next = lisp_parse(next, out_expr, &out);
     TEST_ASSERT(prev != next);
     for(int i = 0; i < out; i++){
-      compiled_expr expr = compile_expr(out_expr + i, c);
+      compiled_expr expr = compile_expr(out_expr + i);
       TEST_ASSERT(NULL != expr.fcn);
       delete_expr(out_expr + i);
     }
     if(out == 0)
       break;
   }
-  bool start_read_eval_print_loop(compiler_state * c);
-  return start_read_eval_print_loop(c);
+  bool start_read_eval_print_loop();
+  return start_read_eval_print_loop();
   return true;
 }
 
@@ -1007,7 +1013,7 @@ int check_expression(char * buffer){
   return status;
 }
 
-bool start_read_eval_print_loop(compiler_state * c){
+bool start_read_eval_print_loop(){
   format("C-LISP REPL\n");
 
   char * expr_reader = NULL;
@@ -1046,7 +1052,7 @@ bool start_read_eval_print_loop(compiler_state * c){
 	continue;
       }
       for(int i = 0; i < out; i++){
-	compiled_expr cexpr = compile_expr(out_expr + i, c);
+	compiled_expr cexpr = compile_expr(out_expr + i);
 	if(NULL == cexpr.fcn){
 	  ERROR("Unable to compile..\n");
 	}else if(type_def_cmp(cexpr.result_type, char_ptr_def)){
