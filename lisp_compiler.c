@@ -346,7 +346,7 @@ compiled_expr compile_expr(expr * e){
   return fdef;
 }
 
-type_def compile_cast(expr arg1, expr typearg){
+type_def cast_macro(expr arg1, expr typearg){
   compiled_expr typexpr = compile_expr(&typearg);
   if(type_def_cmp(typexpr.result_type,type_def_def) == false){
     ERROR("Unexpected type");
@@ -595,14 +595,16 @@ bool lisp_compiler_test(){
     format("defext: %i\n", var);
     *var = fdef;
   }
+
   {// the cast macro
     cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "cast", cmacro_def_def);
     static cmacro_def cast_def;
     cast_def.arg_cnt = 2;
-    cast_def.fcn = &compile_cast;
+    cast_def.fcn = &cast_macro;
     cast_def.name = "cast";
     *var = cast_def;
   }
+
   {// the lol macro
     type_def lol(expr exp){
       printf("LOL: Compiling stuff..\n");
@@ -650,11 +652,12 @@ bool lisp_compiler_test(){
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
   *((type_def *) var) = type_def_def;
   *((type_def *) var2) = decl_def;
-
+  type_def * var3 = (type_def *) compiler_define_variable(c, "char_ptr_def", type_def_def);
+  *var3 = char_ptr_def;
   type_def * i64var = (type_def *) compiler_define_variable(c, "i64_def", type_def_def);
   *i64var = i64_def;
   char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 100 i64_def)";
-  
+  test_code = "(cast 10 i64_def)";
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
@@ -673,7 +676,7 @@ bool lisp_compiler_test(){
       break;
   }
   bool start_read_eval_print_loop();
-  //return start_read_eval_print_loop();
+  return start_read_eval_print_loop();
   return true;
 }
 
