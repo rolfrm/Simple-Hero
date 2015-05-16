@@ -155,15 +155,15 @@ static type_def compile_sexpr(sub_expr sexpr){
 	expr * se = sexpr.sub_exprs;
 	switch(argcnt){
 	case 0:
-	  return((type_def (*)())cmac->fcn)();
+	  return ((type_def (*)())cmac->fcn)();
 	case 1:
-	  return((type_def (*)(expr))cmac->fcn)(se[1]);
+	  return ((type_def (*)(expr))cmac->fcn)(se[1]);
 	case 2:
-	  return((type_def (*)(expr,expr))cmac->fcn)(se[1],se[2]);
+	  return ((type_def (*)(expr,expr))cmac->fcn)(se[1],se[2]);
 	case 3:
-	  return((type_def (*)(expr,expr,expr))cmac->fcn)(se[1],se[2],se[3]);
+	  return ((type_def (*)(expr,expr,expr))cmac->fcn)(se[1],se[2],se[3]);
 	case 4:
-	  return((type_def (*)(expr,expr,expr,expr))cmac->fcn)(se[1],se[2],se[3],se[4]);
+	  return ((type_def (*)(expr,expr,expr,expr))cmac->fcn)(se[1],se[2],se[3],se[4]);
 	default:
 	  ERROR("%i arguments are not supported", argcnt);
 	  return error_def;
@@ -226,20 +226,15 @@ void compiler_set_state(compiler_state * ls){
 
 compiled_expr compile_expr(expr * e){
 
-  static TCCState * tccs;
   compiled_expr err;
   err.fcn = NULL;
   err.result_type = error_def;
-  tccs = tcc_new();
-  tcc_set_lib_path(tccs,".");
-  tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
-  tcc_add_library(tccs, "glfw");
-  tcc_set_error_func(tccs, NULL, tccerror);
-  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
 
   size_t cdecl_size = 0;
+  comp_state * olds = compstate;
   comp_state s = comp_state_make();
   compstate = &s;
+
   s.c = lisp_state;
   FILE * stream = open_memstream(&s.buffer, &cdecl_size);
   type_def td;
@@ -255,13 +250,23 @@ compiled_expr compile_expr(expr * e){
   for(size_t i = 0; i < array_count(dep_graph); i++)
     dep_graph[i] = void_def;
   
+  struct{
+    char * name;
+    void * data;
+  }symbols[50];
+  size_t symcnt = 0;
+  void addsym(char * name, void * ptr){
+    symbols[symcnt].name = name;
+    symbols[symcnt].data = ptr;
+    symcnt++;
+  }
 
+  
   stream = open_memstream(&prebuffer,&pre_size);
   with_format_out(stream,lambda(void,(){
-	format("%s", "#include \"cstd_header.h\"\n"); 
+
 	for(size_t i = 0; i < s.dep_cnt; i++){
 	  var_def * var = get_variable2(s.deps[i]);
-	  printf("Variable %s %i\n", s.deps[i], var);
 	  if(var == NULL){
 	    ERROR("Undefined variable '%s'",s.deps[i]);
 	    return;
@@ -270,27 +275,51 @@ compiled_expr compile_expr(expr * e){
 	  if(type_def_cmp(var->type,fcn_def_def)){
 	    fcn_def * fcn = var->data;
 	    if(fcn->is_extern == false){
-	      tcc_add_symbol(tccs, fcn->name, fcn->ptr);
+	      addsym(fcn->name,fcn->ptr);
 	    }
 	    decl dcl;
 	    dcl.name = fcn->name;
 	    dcl.type = fcn->type;
 	    make_dependency_graph(dep_graph,dcl.type);
+	  }else{
+	    addsym(var->name,var->data);
+	    make_dependency_graph(dep_graph,var->type);
+	  }
+	}
+	write_dependencies(dep_graph);
+	for(size_t i = 0; i < s.dep_cnt; i++){
+	  var_def * var = get_variable2(s.deps[i]);
+	  if(type_def_cmp(var->type,fcn_def_def)){
+	    fcn_def * fcn = var->data;
+	    decl dcl;
+	    dcl.name = fcn->name;
+	    dcl.type = fcn->type;
 	    print_cdecl(dcl);
 	  }else{
 	    decl dcl;
 	    dcl.name = var->name;
 	    dcl.type = var->type;
-	    make_dependency_graph(dep_graph,var->type);
+	    format("extern ");
 	    print_cdecl(dcl);
 	  }
 	}
+
 	print_def(td,0,true);
 	format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
       }));
-  compstate = NULL;
+  compstate = olds;
   fclose(stream);
-  
+  printf("Compiling:\n--------------\n\n\n%s\n\n\n ------------\n\n", prebuffer);
+
+  TCCState * tccs = tcc_new();
+  tcc_set_lib_path(tccs,".");
+  tcc_add_library_path(tccs,"/usr/lib/x86_64-linux-gnu/");
+  tcc_add_library(tccs, "glfw");
+  tcc_set_error_func(tccs, NULL, tccerror);
+  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
+  for(size_t i = 0; i < symcnt; i++){
+    tcc_add_symbol(tccs, symbols[i].name, symbols[i].data);
+  }
   int ok = tcc_compile_string(tccs,prebuffer);
 
   if(ok != 0){
@@ -325,7 +354,7 @@ type_def compile_cast(expr arg1, expr typearg){
   }
   type_def (* fcn)() = typexpr.fcn;
   type_def result = fcn();
-
+  with_format_out(stdout, lambda(void,(){print_def(result,0,true);}));
   if(result.kind == POINTER || result.kind == SIMPLE){
     // only pointers and simple types can be casted
     format("((");
@@ -392,17 +421,6 @@ TCCState * mktccs(){
   return tccs;
 }
 
-size_t get_required_types(compiler_state * c, type_def main_def, type_def * ts, size_t cnt){
-  UNUSED(cnt);
-  UNUSED(main_def);
-  UNUSED(c);
-  ts[0] = decl_def;
-  ts[1] = type_def_def;
-  ts[2] = type_def_kind_def;
-  ts[3] = fcn_def_def;
-  return 4;
-}
-
 void write_dependencies(type_def * deps){
   size_t dep_cnt = 0;
   for(; type_def_cmp(deps[dep_cnt], void_def) == false; dep_cnt++);
@@ -447,81 +465,13 @@ void write_dependencies(type_def * deps){
 
 void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   // this is a bit complex. I need to run the code which defines and sets that variable
+  // todo: It is probably not nessesary to invoke tcc just to figure out the size of t.
+
   type_def required_types[100];
   for(size_t i = 0; i < array_count(required_types); i++)
     required_types[i] = void_def;
   make_dependency_graph(required_types,t);
-  /*size_t required_types_cnt = 0;
-  for(; type_def_cmp(required_types[required_types_cnt], void_def) == false; required_types_cnt++);
   
-  size_t bufsize = 10000;
-  char * buf = malloc(bufsize);
-  
-  char * locbuf = buf;
-  size_t restsize = bufsize;
-
-  { // insert header
-    size_t cnt = sprintf(locbuf, "#include \"cstd_header.h\"\n");
-    locbuf += cnt;
-    restsize -= cnt;	
-  }
-  for(size_t i = 0; i < required_types_cnt; i++){
-    type_def t = required_types[i];
-    if(t.kind == STRUCT){
-      char * name = t.cstruct.name;
-      if(name != NULL){
-	size_t cnt;
-	cnt = sprintf(locbuf, "struct %s;\n", name);
-	locbuf += cnt;
-	restsize -= cnt;
-      }
-    }
-    if(t.kind == TYPEDEF){
-      type_def inner = *t.ctypedef.inner;
-      if(inner.kind == STRUCT){
-	char * name = inner.cstruct.name;
-	size_t cnt;
-	char _namebuf[100];
-	if(name == NULL){
-	  sprintf(_namebuf, "_%s_", t.ctypedef.name);
-	  name = _namebuf;
-	}	
-	cnt = sprintf(locbuf, "typedef struct %s %s;\n", name, t.ctypedef.name);
-	locbuf += cnt;
-	restsize -= cnt;	
-	
-      }
-      if(inner.kind == ENUM){
-	size_t cnt = sprintf(locbuf, "typedef enum {\n");
-	locbuf += cnt;
-	restsize -= cnt;	
-	
-	for(int j = 0; j < inner.cenum.cnt; j++){
-	  char * comma = (j !=(inner.cenum.cnt-1) ? "," : "");
-	  size_t cnt = sprintf(locbuf, "   %s = %i%s\n", inner.cenum.names[j], inner.cenum.values[j], comma);
-	  locbuf += cnt;
-	  restsize -= cnt;	
-	
-	}
-	cnt = sprintf(locbuf, "}%s;\n",t.ctypedef.name);
-	locbuf += cnt;
-	restsize -= cnt;	
-
-      }
-    }
-  }
-
-  for(size_t i = 0; i < required_types_cnt; i++){
-    type_def t = required_types[i];
-    if(t.kind != STRUCT) continue;
-    size_t cnt = write_def_to_buffer(t,locbuf,restsize);
-    locbuf += cnt;
-    restsize -= cnt;
-    cnt = sprintf(locbuf, ";\n");
-    locbuf += cnt;
-    restsize -= cnt;	
-    
-    }*/
   char * cdecl;
   { // write code to buffer
     size_t cdecl_size = 0;
@@ -703,7 +653,7 @@ bool lisp_compiler_test(){
 
   type_def * i64var = (type_def *) compiler_define_variable(c, "i64_def", type_def_def);
   *i64var = i64_def;
-  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 1 i64_def)";
+  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 100 i64_def)";
   
   expr out_expr[2];
   char * next = test_code;
