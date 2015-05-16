@@ -45,54 +45,138 @@ void tccerror(void * opaque, const char * msg){
 comp_state comp_state_make(){
   comp_state out;
   out.buffer = NULL;
-  out.fcns = NULL;
-  out.fcn_cnt = 0;
+  //out.fcns = NULL;
+  //out.fcn_cnt = 0;
+  out.deps = NULL;
+  out.dep_cnt = 0;
   return out;
 }
 
-fcn_def * get_fcn_def(char * name, size_t name_len){
+var_def * get_variable(char * name, size_t name_len){
   compiler_state * c = lisp_state;
   for(size_t i = 0;i < c->var_cnt; i++){
     for(size_t j = 0; j < name_len; j++)
       if(name[j] != c->vars[i].name[j])
 	goto next_item;
-    if(false == type_def_cmp(c->vars[i].type,fcn_def_def)){
-      ERROR("Not a function %s", name);
-      return NULL;
-    }
-    return (fcn_def *) c->vars[i].data;
+    return c->vars + i;
   next_item:
     continue;
   }
   return NULL;
 }
 
-void add_required_fcn(fcn_def fdef){
-  comp_state * s = compstate;
-  for(size_t i = 0; i < s->fcn_cnt; i++){
-    if(fcn_def_cmp(fdef,s->fcns[i]) == true)
-      return;
+var_def * get_variable2(char * name){
+  compiler_state * c = lisp_state;
+  for(size_t i = 0;i < c->var_cnt; i++){
+    if(strcmp(name,c->vars[i].name) != 0)
+      goto next_item;
+    return c->vars + i;
+  next_item:
+    continue;
   }
-  list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
+  return NULL;
+}
+
+
+fcn_def * get_fcn_def(char * name, size_t name_len){
+  var_def * var = get_variable(name, name_len);
+  if(var == NULL){
+    return NULL;
+  }
+  
+  if(false == type_def_cmp(var->type,fcn_def_def)){
+    return NULL;
+  }
+  return (fcn_def *) var->data;
+}
+
+cmacro_def * get_cmacro_def(char * name, size_t name_len){
+  var_def * var = get_variable(name, name_len);
+  if(var == NULL){
+    return NULL;
+  }
+  
+  if(false == type_def_cmp(var->type,cmacro_def_def)){
+    return NULL;
+  }
+  return (cmacro_def *) var->data;
+}
+
+//void add_required_fcn(fcn_def fdef){
+//  comp_state * s = compstate;
+//  for(size_t i = 0; i < s->fcn_cnt; i++){
+//    if(fcn_def_cmp(fdef,s->fcns[i]) == true)
+//      return;
+//  }
+//  list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
+//}
+
+void add_dep(char * name){
+  comp_state * s = compstate;
+  for(size_t i = 0; i < s->dep_cnt; i++){
+    char * dep = s->deps[i];
+    if(strcmp(dep,name) == 0){
+      return;
+    }
+  }
+  list_add((void **) &s->deps, &s->dep_cnt, &name, sizeof(name));
 }
 
 static type_def compile_sexpr(sub_expr sexpr){
 
   fcn_def * fcn;
   for(int i = 0; i < sexpr.sub_expr_count; i++){
-
-    type_def def = compile_iexpr(sexpr.sub_exprs[i]);
+    
     if(i == 0){ 
-      value_expr sexpr2 = sexpr.sub_exprs[i].value;
-      fcn = get_fcn_def(sexpr2.value,sexpr2.strln);
-      add_required_fcn(*fcn);
-      if(fcn == NULL){
-	ERROR("Unknown function '%.*s'",sexpr2.strln,sexpr2.value);
+      // first arg must be a symbol.
+      if(sexpr.sub_exprs[0].type == EXPR){
+	ERROR("First arg must be a symbol");
 	return error_def;
       }
       
-      format("(");
+      value_expr sexpr2 = sexpr.sub_exprs[0].value;
+      fcn = get_fcn_def(sexpr2.value,sexpr2.strln);
+      if(fcn != NULL){
+	//add_required_fcn(*fcn);
+	add_dep(fcn->name);
+      
+	format("%s(",fcn->name);	
+      }else{
+	cmacro_def * cmac = get_cmacro_def(sexpr2.value,sexpr2.strln);
+	if(cmac == NULL){
+	  ERROR("cannot handle %.*s",sexpr2.strln,sexpr2.value);
+	  return error_def;
+	}
+	int argcnt = sexpr.sub_expr_count -1;
+	if(argcnt != cmac->arg_cnt){
+	  ERROR("Macro '%s' cannot handle %s arguments\n", cmac->name, argcnt);
+	  return error_def;
+	}
+	expr * se = sexpr.sub_exprs;
+	switch(argcnt){
+	case 0:
+	  return((type_def (*)())cmac->fcn)();
+	case 1:
+	  return((type_def (*)(expr))cmac->fcn)(se[1]);
+	case 2:
+	  return((type_def (*)(expr,expr))cmac->fcn)(se[1],se[2]);
+	case 3:
+	  return((type_def (*)(expr,expr,expr))cmac->fcn)(se[1],se[2],se[3]);
+	case 4:
+	  return((type_def (*)(expr,expr,expr,expr))cmac->fcn)(se[1],se[2],se[3],se[4]);
+	default:
+	  ERROR("%i arguments are not supported", argcnt);
+	  return error_def;
+	}
+      }
+
     }else{
+      expr exp = sexpr.sub_exprs[i];
+      type_def def = compile_iexpr(exp);
+      if(type_def_cmp(def,error_def)){
+	return def;
+      }
+      
       if(false == type_def_cmp(def, fcn->type.fcn.args[i -1].type)){
 	ERROR("Invalid argument %i for '%s'", i -1, fcn->name);
 	print_cdecl(fcn->type.fcn.args[i-1]);
@@ -116,7 +200,9 @@ static type_def compile_value(value_expr vexpr){
     return char_ptr_def;
   }else if(vexpr.type == KEYWORD || vexpr.type == SYMBOL){
     format("%.*s ",vexpr.strln,vexpr.value);
-    return void_def;
+    var_def * var = get_variable(vexpr.value,vexpr.strln);
+    add_dep(var->name);
+    return var->type;
   }else if(vexpr.type == NUMBER){
     format("%.*s ",vexpr.strln,vexpr.value);
     return i64_def;
@@ -159,31 +245,56 @@ compiled_expr compile_expr(expr * e){
   type_def td;
   with_format_out(stream,lambda(void,(){ td = compile_iexpr(*e); }));
   fclose(stream);
-
+  if(type_def_cmp(error_def,td)){
+    ERROR("COULD NO COMPILE!\n");
+    return err;
+  }
   char * prebuffer = NULL;
   size_t pre_size = 0;
+  type_def dep_graph[100];
+  for(size_t i = 0; i < array_count(dep_graph); i++)
+    dep_graph[i] = void_def;
+  
+
   stream = open_memstream(&prebuffer,&pre_size);
   with_format_out(stream,lambda(void,(){
-	format("%s", "#include \"cstd_header.h\"\n");
-	for(size_t i = 0; i < s.fcn_cnt; i++){
-	  fcn_def fcn = s.fcns[i];
-	  if(fcn.is_extern == false){
-	    tcc_add_symbol(tccs, fcn.name, fcn.ptr);
+	format("%s", "#include \"cstd_header.h\"\n"); 
+	for(size_t i = 0; i < s.dep_cnt; i++){
+	  var_def * var = get_variable2(s.deps[i]);
+	  printf("Variable %s %i\n", s.deps[i], var);
+	  if(var == NULL){
+	    ERROR("Undefined variable '%s'",s.deps[i]);
+	    return;
 	  }
-	  decl dcl;
-	  dcl.name = fcn.name;
-	  dcl.type = fcn.type;
-	  print_cdecl(dcl);
+
+	  if(type_def_cmp(var->type,fcn_def_def)){
+	    fcn_def * fcn = var->data;
+	    if(fcn->is_extern == false){
+	      tcc_add_symbol(tccs, fcn->name, fcn->ptr);
+	    }
+	    decl dcl;
+	    dcl.name = fcn->name;
+	    dcl.type = fcn->type;
+	    make_dependency_graph(dep_graph,dcl.type);
+	    print_cdecl(dcl);
+	  }else{
+	    decl dcl;
+	    dcl.name = var->name;
+	    dcl.type = var->type;
+	    make_dependency_graph(dep_graph,var->type);
+	    print_cdecl(dcl);
+	  }
 	}
 	print_def(td,0,true);
 	format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
       }));
   compstate = NULL;
   fclose(stream);
+  
   int ok = tcc_compile_string(tccs,prebuffer);
 
   if(ok != 0){
-    ERROR("Unable to compile %s\n error: %i",s.buffer, ok);
+    ERROR("Unable to compile %s\n error: %i",prebuffer, ok);
     return err;
   }
   int size = tcc_relocate(tccs, NULL);
@@ -292,14 +403,55 @@ size_t get_required_types(compiler_state * c, type_def main_def, type_def * ts, 
   return 4;
 }
 
+void write_dependencies(type_def * deps){
+  size_t dep_cnt = 0;
+  for(; type_def_cmp(deps[dep_cnt], void_def) == false; dep_cnt++);
+  format("#include \"cstd_header.h\"\n");
+  for(size_t i = 0; i < dep_cnt; i++){
+    type_def t = deps[i];
+    if(t.kind == STRUCT){
+      char * name = t.cstruct.name;
+      if(name != NULL){
+	format("struct %s;\n", name);
+      }
+    }
+    if(t.kind == TYPEDEF){
+      type_def inner = *t.ctypedef.inner;
+      if(inner.kind == STRUCT){
+	char * name = inner.cstruct.name;
+	char _namebuf[100];
+	if(name == NULL){
+	  sprintf(_namebuf, "_%s_", t.ctypedef.name);
+	  name = _namebuf;
+	}	
+	format("typedef struct %s %s;\n", name, t.ctypedef.name);
+      }
+      if(inner.kind == ENUM){
+	format("typedef enum {\n");
+	for(int j = 0; j < inner.cenum.cnt; j++){
+	  char * comma = (j !=(inner.cenum.cnt-1) ? "," : "");
+	  format("   %s = %i%s\n", inner.cenum.names[j], inner.cenum.values[j], comma);
+	}
+	format("}%s;\n",t.ctypedef.name);
+      }
+    }
+  }
+
+  for(size_t i = 0; i < dep_cnt; i++){
+    type_def t = deps[i];
+    if(t.kind != STRUCT) continue;
+    print_def(t,0,false);
+    format(";\n");
+  }
+}
+
 void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   // this is a bit complex. I need to run the code which defines and sets that variable
-  //UNUSED(c);
   type_def required_types[100];
   for(size_t i = 0; i < array_count(required_types); i++)
     required_types[i] = void_def;
   make_dependency_graph(required_types,t);
-  size_t required_types_cnt = 0;
+  /*size_t required_types_cnt = 0;
   for(; type_def_cmp(required_types[required_types_cnt], void_def) == false; required_types_cnt++);
   
   size_t bufsize = 10000;
@@ -307,7 +459,6 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   
   char * locbuf = buf;
   size_t restsize = bufsize;
-
 
   { // insert header
     size_t cnt = sprintf(locbuf, "#include \"cstd_header.h\"\n");
@@ -370,26 +521,27 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
     locbuf += cnt;
     restsize -= cnt;	
     
-  }
-
+    }*/
+  char * cdecl;
   { // write code to buffer
-    char * cdecl;
     size_t cdecl_size = 0;
     FILE * stream = open_memstream(&cdecl, &cdecl_size);
     decl dcl;
     dcl.name = name;
     dcl.type = t;
-    with_format_out(stream, lambda(void,(){print_cdecl(dcl);}));
+    void go(){
+      write_dependencies(required_types);
+      print_cdecl(dcl);
+    }
+    with_format_out(stream, go);
     fclose(stream);
-    size_t cnt = sprintf(locbuf, "%s\n", cdecl);
-    free(cdecl);
-    locbuf += cnt;
-    restsize -= cnt;	
+    //locbuf += cnt;
+    //restsize -= cnt;	
   }
 
   TCCState * tccs = mktccs();
 
-  tcc_compile_string(tccs, buf);
+  tcc_compile_string(tccs, cdecl);
   
   int size = tcc_relocate(tccs, NULL);
   char * codebuf = malloc(size);
@@ -401,8 +553,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   vdef.data = var;
   list_add((void **)&c->vars, &c->var_cnt,&vdef,sizeof(var_def));
   tcc_delete(tccs);
-
-  free(buf);
+  free(cdecl);
   return var;
 }
 void tccs_test2();
@@ -472,7 +623,7 @@ bool lisp_compiler_test(){
     fdef.is_extern = false;
     fdef.ptr = &print_string;
     fcn_def * var = (fcn_def *) compiler_define_variable(c, "print_string", fcn_def_def);
-    format("VAR: %i\n", var);
+    format("print string: %i\n", var);
     TEST_ASSERT(var != NULL);
     *var = fdef;
   }
@@ -490,10 +641,31 @@ bool lisp_compiler_test(){
     defext_def.fcn.args = args;
     
     fcn_def fdef = defext("defext",defext_def);
-    UNUSED(fdef);
     fcn_def * var = (fcn_def *) compiler_define_variable(c, "defext", fcn_def_def);
+    format("defext: %i\n", var);
     *var = fdef;
   }
+  {// the cast macro
+    cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "cast", cmacro_def_def);
+    static cmacro_def cast_def;
+    cast_def.arg_cnt = 2;
+    cast_def.fcn = &compile_cast;
+    cast_def.name = "cast";
+    *var = cast_def;
+  }
+  {// the lol macro
+    type_def lol(expr exp){
+      printf("LOL: Compiling stuff..\n");
+      return compile_iexpr(exp);
+    }
+    cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "lol", cmacro_def_def);
+    static cmacro_def cast_def;
+    cast_def.arg_cnt = 1;
+    cast_def.fcn = &lol;
+    cast_def.name = "lol";
+    *var = cast_def;
+  }
+
   {
     static type_def voidstr_def;
     voidstr_def.kind = FUNCTION;
@@ -528,8 +700,10 @@ bool lisp_compiler_test(){
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
   *((type_def *) var) = type_def_def;
   *((type_def *) var2) = decl_def;
-  
-  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (glfwGetVersionString)";
+
+  type_def * i64var = (type_def *) compiler_define_variable(c, "i64_def", type_def_def);
+  *i64var = i64_def;
+  char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 1 i64_def)";
   
   expr out_expr[2];
   char * next = test_code;

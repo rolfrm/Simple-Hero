@@ -21,7 +21,7 @@ const char * allowed_errors[] ={
   "Unknown touch device",
   "Invalid renderer"
 };
-
+#include <signal.h>
 bool faulty = false;
 void _error(const char * file, int line, const char * str, ...){
   char buffer[1000];  
@@ -40,6 +40,7 @@ void _error(const char * file, int line, const char * str, ...){
   loge("%s", buffer);
   printf("\n");
   printf("** **\n");
+  raise(SIGINT);
 }
 
 void run_ai(ccdispatch * dispatcher, game_state * gs);

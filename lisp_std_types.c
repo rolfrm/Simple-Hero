@@ -204,4 +204,21 @@ void load_defs(){
     members[3].name = "ptr";
     members[3].type = void_ptr_def;
   }
+  { // cmacrodef_def
+    cmacro_def_def.kind = TYPEDEF;
+    static decl members[2];
+    static type_def inner;
+    cmacro_def_def.ctypedef.name = "cmacro_def";
+    cmacro_def_def.ctypedef.inner = &inner;
+    inner.kind = STRUCT;
+    inner.cstruct.members = members;
+    inner.cstruct.cnt = array_count(members);
+    inner.cstruct.name = "_cmacro_def";
+    members[0].name = "name";
+    members[0].type = char_ptr_def;
+    members[1].name = "arg_cnt";
+    members[1].type = i64_def;
+    members[2].name = "fcn";
+    members[2].type = void_ptr_def;
+  }
 }
