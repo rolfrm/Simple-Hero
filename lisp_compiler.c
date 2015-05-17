@@ -457,6 +457,7 @@ type_def type_macro(expr typexpr){
 }
 
 type_def new_macro(expr typexpr, expr body){
+  UNUSED(body);
   type_def td = _type_macro(typexpr);
   if(td.kind == FUNCTION){
     format("NULL");
@@ -474,7 +475,7 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   expr typexpr2[type_cnt + 1];
   typexpr2[0].type = VALUE;
   typexpr2[0].value = (value_expr){SYMBOL,"fcn",3};
-  for(int i = 0; i<type_cnt;i++){
+  for(size_t i = 0; i<type_cnt;i++){
     typexpr2[i + 1] = typexpr.sub_expr.sub_exprs[i];
   }
   
@@ -485,11 +486,11 @@ type_def defun_macro(expr name, expr typexpr, expr body){
 	  
   type_def td = _type_macro(stypexpr);
 	  
-  type_def eval_def;
-  eval_def.kind = FUNCTION;
-  eval_def.fcn.ret = &td;
-  eval_def.fcn.cnt = 0;
-  eval_def.fcn.args = NULL;
+  //type_def eval_def;
+  //eval_def.kind = FUNCTION;
+  //eval_def.fcn.ret = &td;
+  //eval_def.fcn.cnt = 0;
+  //eval_def.fcn.args = NULL;
 
   char fcnname[name.value.strln+1];
   strncpy(fcnname,name.value.value,name.value.strln);
@@ -651,7 +652,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   free(cdecl);
   return var;
 }
-void tccs_test2();
+bool tccs_test2();
 compiler_state * cs = NULL;
 fcn_def defext(char * name, type_def type){
   // defining an external function is close to defining an internal one
@@ -818,7 +819,7 @@ bool lisp_compiler_test(){
     list_add((void **)&list,&list_cnt,&i, sizeof(int));
   TEST_ASSERT(list_cnt == 5);
   TEST_ASSERT(list[4] = 4);
-  tccs_test2();
+  TEST(tccs_test2);
   type_def * var = (type_def *) compiler_define_variable(c, "type_def_def", type_def_def);
   type_def * var2 = (type_def *) compiler_define_variable(c, "decl_def", decl_def);
   *((type_def *) var) = type_def_def;
@@ -887,6 +888,7 @@ void eval_print(compiled_expr cexpr){
 
     type_def (*eval) () = cexpr.fcn;
     type_def d = eval();
+    UNUSED(d);
     //print_def(d,0,false);
     printf(" : type_def\n");
   }
@@ -958,24 +960,28 @@ void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
   return tcc_get_symbol(tccs, symbol);
 }
 
-void tccs_test2(){
-  char * a = "float calc_x(){ return 5.0f;}";
-  char * b = "float calc_x(); int calc_y(){ return calc_x() + 10;}";
-  char * c = "float cval = 20.0;";
+bool tccs_test2(){
+  char * a = "int calc_x(){ return 5;}";
+  char * b = "int calc_x(); int calc_y(){{{{ int v = 10; return calc_x() + v;}}}}";
+  char * c = "int cval = 20;";
   TCCState * tccs = mktccs();
 
-  float (* fcn)() =  tccs_compile_and_get(tccs, a, "calc_x");
+  int (* fcn)() =  tccs_compile_and_get(tccs, a, "calc_x");
+  TEST_ASSERT(fcn() == 5);
   format("outp: %f\n", fcn());
- 
+  
   tcc_delete(tccs);
   tccs = mktccs();
   tcc_add_symbol(tccs, "calc_x", fcn);
   int (* fcn2)() = tccs_compile_and_get(tccs, b, "calc_y");
+  TEST_ASSERT(fcn2() == 15);
   format("outp: %i\n", fcn2());
   tcc_delete(tccs);
 
   tccs = mktccs();
-  float * var = tccs_compile_and_get(tccs, c, "cval");
+  int * var = tccs_compile_and_get(tccs, c, "cval");
   format("outp: %i\n", var);
+  TEST_ASSERT(*var == 20);
   tcc_delete(tccs);
+  return TEST_SUCCESS;
 }
