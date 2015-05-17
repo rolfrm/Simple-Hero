@@ -263,9 +263,7 @@ compiled_expr compile_expr(expr * e){
 	if(fcn->is_extern == false){
 	  addsym(fcn->name,fcn->ptr);
 	}
-	decl dcl;
-	dcl.name = fcn->name;
-	dcl.type = fcn->type;
+	decl dcl = {fcn->name, fcn->type};
 	make_dependency_graph(dep_graph,dcl.type);
       }else{
 	addsym(var->name,var->data);
