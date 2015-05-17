@@ -78,6 +78,9 @@ var_def * get_variable2(char * name){
 }
 
 type_def * get_type_def(char * name, size_t len){
+  if(strncmp("void",name,len) == 0){
+    return &void_def;
+  }
   compiler_state * c = lisp_state;
   for(size_t i = 0;i < c->var_cnt; i++){
     var_def * v = c->vars + i;
@@ -305,10 +308,20 @@ compiled_expr compile_expr(expr * e){
 	decl dcl = {var->name, var->type};
 	format("extern ");
 	print_cdecl(dcl);
+	format(";\n");
       }
     }
-    print_def(td,0,true);
-    format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
+	  
+    type_def eval_def;
+    eval_def.kind = FUNCTION;
+    eval_def.fcn.ret = &td;
+    eval_def.fcn.cnt = 0;
+    eval_def.fcn.args = NULL;
+	  
+    decl dcl = {"__eval",eval_def};
+    
+    print_cdecl(dcl);
+    format("{\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
   }
 
   with_format_out(stream,expand_deps);
@@ -395,8 +408,7 @@ bool read_decl(expr dclexpr, decl * out){
   }
 
 type_def _type_macro(expr typexpr){
-    
-  if(typexpr.type == EXPR){
+    if(typexpr.type == EXPR){
     sub_expr sexp = typexpr.sub_expr;
     COMPILE_ASSERT(sexp.sub_expr_count > 0);
     expr kind = sexp.sub_exprs[0];
@@ -451,8 +463,44 @@ type_def new_macro(expr typexpr, expr body){
   }
   return td;
 }
+	  
+type_def defun_macro(expr name, expr typexpr, expr body){
+  COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
+  COMPILE_ASSERT(typexpr.type == EXPR && typexpr.sub_expr.sub_expr_count > 0);
+  printf("DEFUN\n");
+  size_t type_cnt = typexpr.sub_expr.sub_expr_count;
+	  
+  
+  expr typexpr2[type_cnt + 1];
+  typexpr2[0].type = VALUE;
+  typexpr2[0].value = (value_expr){SYMBOL,"fcn",3};
+  for(int i = 0; i<type_cnt;i++){
+    typexpr2[i + 1] = typexpr.sub_expr.sub_exprs[i];
+  }
+  
+  expr stypexpr;
+  stypexpr.type = EXPR;
+  stypexpr.sub_expr.sub_expr_count = type_cnt + 1;
+  stypexpr.sub_expr.sub_exprs = typexpr2;
+	  
+  type_def td = _type_macro(stypexpr);
+	  
+  type_def eval_def;
+  eval_def.kind = FUNCTION;
+  eval_def.fcn.ret = &td;
+  eval_def.fcn.cnt = 0;
+  eval_def.fcn.args = NULL;
 
-type_def defun_macro(expr types, expr body){
+  char fcnname[name.value.strln+1];
+  strncpy(fcnname,name.value.value,name.value.strln);
+  decl dcl = {fcnname,td};
+  with_format_out(stdout, lambda(void,(){print_cdecl(dcl);}));
+	  
+  return void_def;
+}
+	  
+
+/*type_def defun_macro(expr types, expr body){
   COMPILE_ASSERT(types.type == EXPR);
   sub_expr types2 = types.sub_expr;
   int exprcnt = types2.sub_expr_count;
@@ -462,7 +510,7 @@ type_def defun_macro(expr types, expr body){
   
   type_def def;
   def.kind = FUNCTION;
-}
+  }*/
 
 void print_cdecl(decl idecl){
   void inner_print(decl idecl){
@@ -493,7 +541,8 @@ void print_cdecl(decl idecl){
   }
 
   inner_print(idecl);
-  format(";\n");
+  format(" ");
+  //format(";\n");
 }
 
 size_t load_cdecl(char * buffer, size_t buffer_len, decl idecl){
@@ -577,6 +626,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
     void go(){
       write_dependencies(required_types);
       print_cdecl(dcl);
+      format(";\n");
     }
     with_format_out(stream, go);
     fclose(stream);
@@ -729,6 +779,15 @@ bool lisp_compiler_test(){
     cast_def.name = "new";
     *var = cast_def;
   }	  
+	  
+  {//type_def defun_macro(expr name, expr typexpr, expr body)
+    cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "defun", cmacro_def_def);
+    static cmacro_def cast_def;
+    cast_def.arg_cnt = 3;
+    cast_def.fcn = &defun_macro;
+    cast_def.name = "defun";
+    *var = cast_def;
+  }
   
   {
     static type_def voidstr_def;
@@ -770,7 +829,8 @@ bool lisp_compiler_test(){
   *i64var = i64_def;
   char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 100 i64_def)";
   test_code = "(cast 10 i64_def)";
-  test_code = "(new i64)";//(fcn i64 (a i64)))";
+  test_code = "(new (fcn i64 (a i64)))";
+  test_code = "(defun printhello (void)(print_string \"hello\\n\"))";
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
@@ -827,7 +887,7 @@ void eval_print(compiled_expr cexpr){
 
     type_def (*eval) () = cexpr.fcn;
     type_def d = eval();
-    print_def(d,0,false);
+    //print_def(d,0,false);
     printf(" : type_def\n");
   }
 }

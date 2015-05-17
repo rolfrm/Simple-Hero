@@ -112,6 +112,10 @@ void print_def(type_def type, int ind, bool is_decl){
     }
     
     break;
+  case FUNCTION:
+    // this is an error.
+    print_cdecl((decl){"anon", type});
+    break;
   default:
     ERROR("not implemented %i", type.kind);
   }
