@@ -102,15 +102,6 @@ cmacro_def * get_cmacro_def(char * name, size_t name_len){
   return (cmacro_def *) var->data;
 }
 
-//void add_required_fcn(fcn_def fdef){
-//  comp_state * s = compstate;
-//  for(size_t i = 0; i < s->fcn_cnt; i++){
-//    if(fcn_def_cmp(fdef,s->fcns[i]) == true)
-//      return;
-//  }
-//  list_add((void **) &s->fcns, &s->fcn_cnt, &fdef, sizeof(fcn_def));
-//}
-
 void add_dep(char * name){
   comp_state * s = compstate;
   for(size_t i = 0; i < s->dep_cnt; i++){
@@ -123,10 +114,8 @@ void add_dep(char * name){
 }
 
 static type_def compile_sexpr(sub_expr sexpr){
-
   fcn_def * fcn;
   for(int i = 0; i < sexpr.sub_expr_count; i++){
-    
     if(i == 0){ 
       // first arg must be a symbol.
       if(sexpr.sub_exprs[0].type == EXPR){
@@ -137,9 +126,7 @@ static type_def compile_sexpr(sub_expr sexpr){
       value_expr sexpr2 = sexpr.sub_exprs[0].value;
       fcn = get_fcn_def(sexpr2.value,sexpr2.strln);
       if(fcn != NULL){
-	//add_required_fcn(*fcn);
 	add_dep(fcn->name);
-      
 	format("%s(",fcn->name);	
       }else{
 	cmacro_def * cmac = get_cmacro_def(sexpr2.value,sexpr2.strln);
@@ -194,7 +181,7 @@ static type_def compile_sexpr(sub_expr sexpr){
   return *(fcn->type.fcn.ret);
 }
 
-static type_def compile_value(value_expr vexpr){
+type_def compile_value(value_expr vexpr){
   if(vexpr.type == STRING){
     format("\"%.*s\"",vexpr.strln, vexpr.value);
     return char_ptr_def;
@@ -260,56 +247,52 @@ compiled_expr compile_expr(expr * e){
     symbols[symcnt].data = ptr;
     symcnt++;
   }
-
   
   stream = open_memstream(&prebuffer,&pre_size);
-  with_format_out(stream,lambda(void,(){
 
-	for(size_t i = 0; i < s.dep_cnt; i++){
-	  var_def * var = get_variable2(s.deps[i]);
-	  if(var == NULL){
-	    ERROR("Undefined variable '%s'",s.deps[i]);
-	    return;
-	  }
-
-	  if(type_def_cmp(var->type,fcn_def_def)){
-	    fcn_def * fcn = var->data;
-	    if(fcn->is_extern == false){
-	      addsym(fcn->name,fcn->ptr);
-	    }
-	    decl dcl;
-	    dcl.name = fcn->name;
-	    dcl.type = fcn->type;
-	    make_dependency_graph(dep_graph,dcl.type);
-	  }else{
-	    addsym(var->name,var->data);
-	    make_dependency_graph(dep_graph,var->type);
-	  }
+  void expand_deps(){
+    for(size_t i = 0; i < s.dep_cnt; i++){
+      var_def * var = get_variable2(s.deps[i]);
+      if(var == NULL){
+	ERROR("Undefined variable '%s'",s.deps[i]);
+	return;
+      }
+      
+      if(type_def_cmp(var->type,fcn_def_def)){
+	fcn_def * fcn = var->data;
+	if(fcn->is_extern == false){
+	  addsym(fcn->name,fcn->ptr);
 	}
-	write_dependencies(dep_graph);
-	for(size_t i = 0; i < s.dep_cnt; i++){
-	  var_def * var = get_variable2(s.deps[i]);
-	  if(type_def_cmp(var->type,fcn_def_def)){
-	    fcn_def * fcn = var->data;
-	    decl dcl;
-	    dcl.name = fcn->name;
-	    dcl.type = fcn->type;
-	    print_cdecl(dcl);
-	  }else{
-	    decl dcl;
-	    dcl.name = var->name;
-	    dcl.type = var->type;
-	    format("extern ");
-	    print_cdecl(dcl);
-	  }
-	}
+	decl dcl;
+	dcl.name = fcn->name;
+	dcl.type = fcn->type;
+	make_dependency_graph(dep_graph,dcl.type);
+      }else{
+	addsym(var->name,var->data);
+	make_dependency_graph(dep_graph,var->type);
+      }
+    }
+    write_dependencies(dep_graph);
+    for(size_t i = 0; i < s.dep_cnt; i++){
+      var_def * var = get_variable2(s.deps[i]);
+      if(type_def_cmp(var->type,fcn_def_def)){
+	fcn_def * fcn = var->data;
+	decl dcl = {fcn->name, fcn->type};
+	print_cdecl(dcl);
+      }else{
+	decl dcl = {var->name, var->type};
+	format("extern ");
+	print_cdecl(dcl);
+      }
+    }
+    print_def(td,0,true);
+    format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
+  }
 
-	print_def(td,0,true);
-	format(" __eval(){\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
-      }));
+  with_format_out(stream,expand_deps);
   compstate = olds;
   fclose(stream);
-  printf("Compiling:\n--------------\n\n\n%s\n\n\n ------------\n\n", prebuffer);
+  printf("Compiling:\n--------------\n\n%s\n\n ------------\n\n", prebuffer);
 
   TCCState * tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
@@ -367,6 +350,10 @@ type_def cast_macro(expr arg1, expr typearg){
     ERROR("Cannot cast invalid type");
     return error_def;
   }
+}
+
+type_def defun_macro(expr types, expr body){
+
 }
 
 void print_cdecl(decl idecl){
