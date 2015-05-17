@@ -440,12 +440,16 @@ type_def type_macro(expr typexpr){
   *typevar = td;
   add_dep(typeid);
   format(typeid);
-  return type_def_def;
+  return *typevar;
   
 }
 
-type_def new_macro(expr typeexpr, expr body){
-
+type_def new_macro(expr typexpr, expr body){
+  type_def td = _type_macro(typexpr);
+  if(td.kind == FUNCTION){
+    format("NULL");
+  }
+  return td;
 }
 
 type_def defun_macro(expr types, expr body){
@@ -716,8 +720,16 @@ bool lisp_compiler_test(){
     cast_def.fcn = &type_macro;
     cast_def.name = "type";
     *var = cast_def;
-
   }
+  {//type_def new_macro(expr typexpr)
+    cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "new", cmacro_def_def);
+    static cmacro_def cast_def;
+    cast_def.arg_cnt = 1;
+    cast_def.fcn = &new_macro;
+    cast_def.name = "new";
+    *var = cast_def;
+  }	  
+  
   {
     static type_def voidstr_def;
     voidstr_def.kind = FUNCTION;
@@ -758,7 +770,7 @@ bool lisp_compiler_test(){
   *i64var = i64_def;
   char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 100 i64_def)";
   test_code = "(cast 10 i64_def)";
-  test_code = "(type (fcn i64 (a i64)))";
+  test_code = "(new i64)";//(fcn i64 (a i64)))";
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
