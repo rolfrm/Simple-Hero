@@ -962,7 +962,7 @@ void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
 
 bool tccs_test2(){
   char * a = "int calc_x(){ return 5;}";
-  char * b = "int calc_x(); int calc_y(){{{{ int v = 10; return calc_x() + v;}}}}";
+  char * b = "int calc_x(); int calc_y(){{{int v2 = 3; { int v = 7; return calc_x() + v + v2;}}}}";
   char * c = "int cval = 20;";
   TCCState * tccs = mktccs();
 
