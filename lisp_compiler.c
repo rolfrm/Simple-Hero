@@ -20,19 +20,6 @@ bool fcn_def_cmp(fcn_def a, fcn_def b){
     && strcmp(a.name,b.name) == 0;
 }
 
-// todo: delete this.
-size_t write_def_to_buffer(type_def def, char * buffer, size_t buffer_len){
-  FILE * f = fmemopen(buffer,buffer_len, "w");
-  FILE * oldstdout = stdout;
-  stdout = f;
-  print_def(def,0,false);
-  fflush(f);
-  stdout = oldstdout;
-  size_t pos = ftell(f);
-  fclose(f);
-  return pos;
-}
-
 compiler_state * compiler_make(){
   return calloc(1, sizeof(compiler_state));
 }
@@ -52,29 +39,46 @@ comp_state comp_state_make(){
   return out;
 }
 
+typedef struct _symbol_stack symbol_stack;
+struct _symbol_stack{
+  var_def * vars;
+  size_t vars_cnt;
+  symbol_stack * tail;
+};
+
+
+__thread symbol_stack * symbolstack = NULL;
+
+void with_symbols(var_def * vars, size_t vars_cnt, void (*fcn)()){
+  symbol_stack nss;
+  nss.vars = vars;
+  nss.vars_cnt = vars_cnt;
+  nss.tail = symbolstack;
+  symbol_stack * oss = symbolstack;
+  symbolstack = &nss;
+  fcn();
+  symbolstack = oss;
+}
+
+
 var_def * get_variable(char * name, size_t name_len){
-  compiler_state * c = lisp_state;
-  for(size_t i = 0;i < c->var_cnt; i++){
-    for(size_t j = 0; j < name_len; j++)
-      if(name[j] != c->vars[i].name[j])
-	goto next_item;
-    return c->vars + i;
-  next_item:
-    continue;
+  symbol_stack * ss = symbolstack;
+  while(ss != NULL){
+    for(size_t i = 0;i < ss->vars_cnt; i++){
+      for(size_t j = 0; j < name_len; j++)
+	if(name[j] != ss->vars[i].name[j])
+	  goto next_item;
+      return ss->vars + i;
+    next_item:
+      continue;
+    }
+    ss = ss->tail;
   }
   return NULL;
 }
 
 var_def * get_variable2(char * name){
-  compiler_state * c = lisp_state;
-  for(size_t i = 0;i < c->var_cnt; i++){
-    if(strcmp(name,c->vars[i].name) != 0)
-      goto next_item;
-    return c->vars + i;
-  next_item:
-    continue;
-  }
-  return NULL;
+  return get_variable(name,strlen(name));
 }
 
 type_def * get_type_def(char * name, size_t len){
@@ -139,6 +143,8 @@ void add_dep(char * name){
   }
   list_add((void **) &s->deps, &s->dep_cnt, &name, sizeof(name));
 }
+
+
 
 static type_def compile_sexpr(sub_expr sexpr){
   fcn_def * fcn;
@@ -252,7 +258,11 @@ compiled_expr compile_expr(expr * e){
   s.c = lisp_state;
   FILE * stream = open_memstream(&s.buffer, &cdecl_size);
   type_def td;
-  with_format_out(stream,lambda(void,(){ td = compile_iexpr(*e); }));
+  void go(){
+    
+    td = compile_iexpr(*e);
+  }
+  with_format_out(stream,lambda(void,(){with_symbols(s.c->vars,s.c->var_cnt,go);}));
   fclose(stream);
   if(type_def_cmp(error_def,td)){
     ERROR("COULD NO COMPILE!\n");
@@ -499,6 +509,26 @@ type_def defun_macro(expr name, expr typexpr, expr body){
 	  
   return void_def;
 }
+
+char * with_split_scope( void (*fcn) (), void (*after)(var_def * ret)){
+  char * buf = NULL;
+  size_t size = 0;
+  FILE * str = open_memstream(&buf, &size);
+  void _go(){
+
+  }
+  with_format_out(str,_go);
+}
+// does nothing just demos scope splitting.
+type_def split_macro(expr body){
+
+  void inner_scope(){
+    compile_iexpr(body);
+  }
+
+  //char * name = with_split_scope(inner_scope);
+
+}
 	  
 
 /*type_def defun_macro(expr types, expr body){
@@ -688,7 +718,33 @@ void print_dep_graph(type_def * defs){
 }	  
 
 bool lisp_compiler_test(){
+  { // testing var stack
+  var_def vars1[] = {{1,void_ptr_def,0},  {2,void_ptr_def,0}};
+  var_def vars2[] = {{4,void_ptr_def,0}, {3,void_ptr_def,0}, {4,void_ptr_def,0}};
+  int stacksize = 0;
+  
+  void a2(){
+    symbol_stack * stk = symbolstack;
+    while(stk != NULL){
+      stacksize += 1;
+      printf("Symbol stack: %i %i\n",stk->vars, stk->vars_cnt);
+      for(int i = 0 ; i < stk->vars_cnt;i++){
+	printf(" %i",stk->vars[i].name);
+      }
+      printf("\n");
+      stk = stk->tail;
+    }
+  }
+  
+  void a1(){
+    with_symbols(vars2,array_count(vars2),a2);
+  }
+  printf("Stacksize; %i\n", stacksize);
 
+  with_symbols(vars1,array_count(vars1),a1);
+  TEST_ASSERT(stacksize == 2);
+  TEST_ASSERT(symbolstack == NULL);
+  }
   compiler_state * c = compiler_make();
   compiler_set_state(c);
   load_defs();
