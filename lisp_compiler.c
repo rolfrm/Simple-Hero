@@ -510,23 +510,37 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   return void_def;
 }
 
-char * with_split_scope( void (*fcn) (), void (*after)(var_def * ret)){
+void seek_back_newline(FILE * f){
+  size_t offset = ftello(f) - 1;
+  do{
+    fseek(f,offset--,SEEK_SET);
+    printf("offset%i %i %i\n",offset, fgetc(f), ftello(f));
+
+  }
+  while(offset > 0 && fgetc(f) != '\n');
+    
+}
+
+type_def with_split_scope(expr sub_scope, void (*fcn) ()){
+  FILE * _str = get_format_out();
+  seek_back_newline(_str);
   char * buf = NULL;
   size_t size = 0;
   FILE * str = open_memstream(&buf, &size);
+  type_def td;
   void _go(){
-
+    td = compile_iexpr(sub_scope);
   }
   with_format_out(str,_go);
 }
 // does nothing just demos scope splitting.
 type_def split_macro(expr body){
-
+  type_def def;
   void inner_scope(){
-    compile_iexpr(body);
+
   }
 
-  //char * name = with_split_scope(inner_scope);
+  return with_split_scope(body, inner_scope);
 
 }
 	  
@@ -717,7 +731,22 @@ void print_dep_graph(type_def * defs){
   }	  
 }	  
 
+bool seek_test(){
+  char * expr_reader = NULL;
+  size_t cnt;
+  FILE * mem = NULL;
+  mem = open_memstream(&expr_reader,&cnt);
+  with_format_out(mem,lambda(void,(){format("hello\nhello2\nhello3");}));
+  fflush(mem);
+  seek_back_newline(mem);
+  char buffer[20];
+  fgets(buffer, array_count(buffer), mem);
+  printf("%s\n", buffer);
+  return TEST_FAIL;
+}
+
 bool lisp_compiler_test(){
+  TEST(seek_test);
   { // testing var stack
   var_def vars1[] = {{1,void_ptr_def,0},  {2,void_ptr_def,0}};
   var_def vars2[] = {{4,void_ptr_def,0}, {3,void_ptr_def,0}, {4,void_ptr_def,0}};
