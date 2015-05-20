@@ -510,20 +510,35 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   return void_def;
 }
 
+// reads back to but not over the first '\n'
 void seek_back_newline(FILE * f){
-  size_t offset = ftello(f) - 1;
+  size_t offset = ftello(f);
+  bool success = true;
   do{
-    fseek(f,offset--,SEEK_SET);
-    printf("offset%i %i %i\n",offset, fgetc(f), ftello(f));
-
-  }
-  while(offset > 0 && fgetc(f) != '\n');
+    if(offset == 0)
+      break;
+    fseek(f,offset,SEEK_SET);
     
+    if(fgetc(f) == '\n'){
+      fseek(f,offset + 1,SEEK_SET);
+      break;
+      
+    }
+    offset -= 1;
+  }
+  while(true);    
 }
 
 type_def with_split_scope(expr sub_scope, void (*fcn) ()){
+  static u64 s_retid = 0;
+  u64 retid = s_retid++;
+  
   FILE * _str = get_format_out();
+  size_t end = ftell(_str);
   seek_back_newline(_str);
+  size_t start = ftell(_str);
+  char * savebuffer = malloc(end - start);
+  fread(savebuffer, end - start, end - start, _str);
   char * buf = NULL;
   size_t size = 0;
   FILE * str = open_memstream(&buf, &size);
@@ -532,6 +547,16 @@ type_def with_split_scope(expr sub_scope, void (*fcn) ()){
     td = compile_iexpr(sub_scope);
   }
   with_format_out(str,_go);
+  fclose(str);
+  fcn(); // whatever the user wants to print..
+  
+  print_def(td,0,false);
+  format(" ret%i = %s\n", retid, buf);
+  format("%s(ret%i);",savebuffer, retid);
+
+  free(savebuffer);
+  free(buf);
+  return td;
 }
 // does nothing just demos scope splitting.
 type_def split_macro(expr body){
@@ -736,13 +761,23 @@ bool seek_test(){
   size_t cnt;
   FILE * mem = NULL;
   mem = open_memstream(&expr_reader,&cnt);
-  with_format_out(mem,lambda(void,(){format("hello\nhello2\nhello3");}));
-  fflush(mem);
-  seek_back_newline(mem);
-  char buffer[20];
-  fgets(buffer, array_count(buffer), mem);
-  printf("%s\n", buffer);
-  return TEST_FAIL;
+  with_format_out(mem,lambda(void,
+			     (){
+			       format("hello\nhello2\nhello3");
+			       fflush(mem);
+			       seek_back_newline(mem);
+			       fflush(mem);
+			       format("hello4!");
+			       seek_back_newline(mem);
+			       seek_back_newline(mem);
+			       format("hello5?");
+			     }));
+
+  fclose(mem);
+  if(strcmp("hello\nhello2\nhello5?",expr_reader) != 0)
+    return TEST_FAIL;
+  free(expr_reader);
+  return TEST_SUCCESS;
 }
 
 bool lisp_compiler_test(){
@@ -865,6 +900,16 @@ bool lisp_compiler_test(){
     cast_def.name = "new";
     *var = cast_def;
   }	  
+
+  {//type_def split_macro(expr typexpr)
+    cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "split", cmacro_def_def);
+    static cmacro_def cast_def;
+    cast_def.arg_cnt = 1;
+    cast_def.fcn = &split_macro;
+    cast_def.name = "split";
+    *var = cast_def;
+  }	  
+
 	  
   {//type_def defun_macro(expr name, expr typexpr, expr body)
     cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "defun", cmacro_def_def);
@@ -917,6 +962,7 @@ bool lisp_compiler_test(){
   test_code = "(cast 10 i64_def)";
   test_code = "(new (fcn i64 (a i64)))";
   test_code = "(defun printhello (void)(print_string \"hello\\n\"))";
+  test_code = "(split \"wtf\")";
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
