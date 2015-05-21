@@ -1,5 +1,5 @@
 OPT = -g
-SOURCES =  simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c lisp_compiler.c lisp_types.c lisp_std_types.c
+SOURCES =  simplehero.c ../bitguy/linmath.c ../bitguy/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c lisp_compiler.c lisp_types.c lisp_std_types.c lisp_compiler_test.c
 CC = gcc
 TARGET = run
 OBJECTS =$(SOURCES:.c=.o)

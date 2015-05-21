@@ -286,7 +286,7 @@ compiled_expr compile_expr(expr * e){
   }
   
   stream = open_memstream(&prebuffer,&pre_size);
-
+  
   void expand_deps(){
     for(size_t i = 0; i < s.dep_cnt; i++){
       var_def * var = get_variable2(s.deps[i]);
@@ -333,7 +333,8 @@ compiled_expr compile_expr(expr * e){
     print_cdecl(dcl);
     format("{\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
   }
-
+  
+  printf(s.buffer);
   with_format_out(stream,expand_deps);
   compstate = olds;
   fclose(stream);
@@ -474,27 +475,71 @@ type_def new_macro(expr typexpr, expr body){
   }
   return td;
 }
-	  
+
+// type_def defun_macro(expr name, expr types, expr body){
+//   COMPILE_ASSERT(types.type == EXPR);
+//   sub_expr types2 = types.sub_expr;
+//   int exprcnt = types2.sub_expr_count;
+//   COMPILE_ASSERT(exprcnt > 0);
+//   expr retexpr = types2.sub_exprs[0];
+//   COMPILE_ASSERT(retexpr.type == VALUE && retexpr.value.type == SYMBOL);
+//   COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
+  
+//   for(int i = 1; i < exprcnt; i++){
+//     //types.subexpr
+//   }
+
+//   type_def def;
+//   def.kind = FUNCTION;
+
+//   }
+void seek_back_newline(FILE * f);
 type_def defun_macro(expr name, expr typexpr, expr body){
-  COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
-  COMPILE_ASSERT(typexpr.type == EXPR && typexpr.sub_expr.sub_expr_count > 0);
-  printf("DEFUN\n");
-  size_t type_cnt = typexpr.sub_expr.sub_expr_count;
-	  
-  
-  expr typexpr2[type_cnt + 1];
-  typexpr2[0].type = VALUE;
-  typexpr2[0].value = (value_expr){SYMBOL,"fcn",3};
-  for(size_t i = 0; i<type_cnt;i++){
-    typexpr2[i + 1] = typexpr.sub_expr.sub_exprs[i];
+  printf("macro fun..\n");
+  COMPILE_ASSERT(typexpr.type == EXPR && typexpr.sub_expr.sub_expr_count >= 0);
+  u64 fcn_var_cnt = typexpr.sub_expr.sub_expr_count;
+  var_def fcn_vars[fcn_var_cnt];
+  for(u64 i = 0; i < fcn_var_cnt; i++){
+    expr sexpr = typexpr.sub_expr.sub_exprs[i];
+    COMPILE_ASSERT(sexpr.type == EXPR && sexpr.sub_expr.sub_expr_count == 2);
+    expr namexpr = sexpr.sub_expr.sub_exprs[0];
+    expr typexpr = sexpr.sub_expr.sub_exprs[1];
+    COMPILE_ASSERT(namexpr.type == VALUE && namexpr.value.type == SYMBOL);
+    type_def td = _type_macro(typexpr);
   }
+
   
-  expr stypexpr;
-  stypexpr.type = EXPR;
-  stypexpr.sub_expr.sub_expr_count = type_cnt + 1;
-  stypexpr.sub_expr.sub_exprs = typexpr2;
-	  
-  type_def td = _type_macro(stypexpr);
+  size_t type_cnt = typexpr.sub_expr.sub_expr_count;
+  
+  char * tmpbuf = NULL;
+  size_t tmpbuf_size = 0;
+  FILE * str = open_memstream(&tmpbuf,&tmpbuf_size);
+  
+  type_def ret_type;
+  with_format_out(str, lambda(void,()
+			      {
+				format("       "); // same number of chars as 'return' + 1
+				ret_type = compile_iexpr(body);
+				if(false == type_def_cmp(ret_type,void_def)){
+				  seek_back_newline(str);
+				  format("return");
+				}
+			      }));
+  fclose(str);
+  print_def(ret_type,0,false);
+  format(" %.*s(",name.value.strln,name.value.value);
+  for(int i = 0; i > fcn_var_cnt; i++){
+    char name
+    decl dcl;
+    
+    print_cdecl(dcl);
+    if(i != fcn_var_cnt - 1)
+      format(",");
+  }
+  printf("Str: %s\n",tmpbuf);
+  
+
+  //type_def td = _type_macro(stypexpr);
 	  
   //type_def eval_def;
   //eval_def.kind = FUNCTION;
@@ -502,10 +547,10 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   //eval_def.fcn.cnt = 0;
   //eval_def.fcn.args = NULL;
 
-  char fcnname[name.value.strln+1];
-  strncpy(fcnname,name.value.value,name.value.strln);
-  decl dcl = {fcnname,td};
-  with_format_out(stdout, lambda(void,(){print_cdecl(dcl);}));
+  //char fcnname[name.value.strln+1];
+  //strncpy(fcnname,name.value.value,name.value.strln);
+  //decl dcl = {fcnname,td};
+  //with_format_out(stdout, lambda(void,(){print_cdecl(dcl);}));
 	  
   return void_def;
 }
@@ -576,21 +621,6 @@ type_def split_macro(expr body){
 }
 	  
 
-type_def defun_macro(expr name, expr types, expr body){
-  COMPILE_ASSERT(types.type == EXPR);
-  sub_expr types2 = types.sub_expr;
-  int exprcnt = types2.sub_expr_count;
-  COMPILE_ASSERT(exprcnt > 0);
-  expr retexpr = types2.sub_exprs[0];
-  COMPILE_ASSERT(retexpr.type == VALUE && retexpr.value.type == SYMBOL);
-  COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
-  //format("%.*s"
-  
-
-  type_def def;
-  def.kind = FUNCTION;
-
-  }
 
 void print_cdecl(decl idecl){
   void inner_print(decl idecl){
@@ -971,8 +1001,8 @@ bool lisp_compiler_test(){
   char * test_code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString)) (print_string \"\\nhello sailor!\\n\") (lol (glfwGetVersionString)) (cast 100 i64_def)";
   test_code = "(cast 10 i64_def)";
   test_code = "(new (fcn i64 (a i64)))";
-  test_code = "(defun printhello (void)(print_string \"hello\\n\"))";
-  test_code = "(split \"wtf\")";
+  test_code = "(defun printhello ()(print_string \"hello\\n\"))";
+  //test_code = "(split \"wtf\")";
   expr out_expr[2];
   char * next = test_code;
   while(next != NULL && *next != 0){
