@@ -534,11 +534,14 @@ type_def with_split_scope(expr sub_scope, void (*fcn) ()){
   u64 retid = s_retid++;
   
   FILE * _str = get_format_out();
+
   size_t end = ftell(_str);
   seek_back_newline(_str);
   size_t start = ftell(_str);
-  char * savebuffer = malloc(end - start);
-  fread(savebuffer, end - start, end - start, _str);
+  size_t len = end - start;
+  char * savebuffer = malloc(len);
+  fread(savebuffer, len, len, _str);
+  printf("Savebuffer '%s' length='%i'\n",savebuffer,len);
   char * buf = NULL;
   size_t size = 0;
   FILE * str = open_memstream(&buf, &size);
@@ -551,8 +554,11 @@ type_def with_split_scope(expr sub_scope, void (*fcn) ()){
   fcn(); // whatever the user wants to print..
   
   print_def(td,0,false);
-  format(" ret%i = %s\n", retid, buf);
-  format("%s(ret%i);",savebuffer, retid);
+  format(" ret%i = %s;\n", retid, buf);
+  if(len > 0)
+    format("%s(ret%i);",savebuffer, retid);
+  else
+    format("(ret%i);", retid);
 
   free(savebuffer);
   free(buf);
@@ -570,17 +576,21 @@ type_def split_macro(expr body){
 }
 	  
 
-/*type_def defun_macro(expr types, expr body){
+type_def defun_macro(expr name, expr types, expr body){
   COMPILE_ASSERT(types.type == EXPR);
   sub_expr types2 = types.sub_expr;
   int exprcnt = types2.sub_expr_count;
   COMPILE_ASSERT(exprcnt > 0);
   expr retexpr = types2.sub_exprs[0];
   COMPILE_ASSERT(retexpr.type == VALUE && retexpr.value.type == SYMBOL);
+  COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
+  //format("%.*s"
   
+
   type_def def;
   def.kind = FUNCTION;
-  }*/
+
+  }
 
 void print_cdecl(decl idecl){
   void inner_print(decl idecl){
