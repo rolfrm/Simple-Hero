@@ -4,13 +4,8 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <GL/gl.h>
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
+#include <iron/types.h>
+#include <iron/log.h>
 
 SDL_Texture* loadTexture(char * path, SDL_Renderer *ren){
   SDL_RWops *rwop = SDL_RWFromFile(path,"rb");
