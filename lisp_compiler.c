@@ -3,9 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
+#include <iron/full.h>
 #include "lisp_parser.h"
 #include <libtcc.h>
 #include "lisp_types.h"
@@ -528,14 +526,14 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   fclose(str);
   print_def(ret_type,0,false);
   format(" %.*s(",name.value.strln,name.value.value);
-  for(int i = 0; i > fcn_var_cnt; i++){
+  /*for(int i = 0; i > fcn_var_cnt; i++){
     char name
     decl dcl;
     
     print_cdecl(dcl);
     if(i != fcn_var_cnt - 1)
       format(",");
-  }
+      }*/
   printf("Str: %s\n",tmpbuf);
   
 
@@ -821,6 +819,8 @@ bool seek_test(){
 }
 
 bool lisp_compiler_test(){
+  load_defs();
+  TEST(test_print_c_code);
   TEST(seek_test);
   { // testing var stack
   var_def vars1[] = {{1,void_ptr_def,0},  {2,void_ptr_def,0}};
@@ -851,7 +851,6 @@ bool lisp_compiler_test(){
   }
   compiler_state * c = compiler_make();
   compiler_set_state(c);
-  load_defs();
   print_def(void_def,0,false);
 	  
   decl dcl;

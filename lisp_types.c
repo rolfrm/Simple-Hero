@@ -165,3 +165,183 @@ void make_dependency_graph(type_def * defs, type_def def){
   }
   *defs = def;	  
 }
+
+void print_value(c_value val){
+  switch(val.type){
+  case C_DEREF:
+    format("*");
+  case C_SUB_EXPR:
+    format("( ");
+    print_value(*val.value);
+    format(")");
+    break;
+  case C_INLINE_VALUE:
+    format("%s ", val.raw.value);
+    break;
+  case C_FUNCTION_CALL:
+    format("%s(", val.call.name);
+    for(size_t i = 0; i < val.call.arg_cnt; i++){
+      print_value(val.call.args[i]);
+      if(i != val.call.arg_cnt -1)
+	format(", ");
+    }
+    format(") ");
+    break;
+  case C_OPERATOR:
+    print_value(*val.operator.left);
+    format("%c ",val.operator);
+    print_value(*val.operator.right);
+    break;
+  case C_SYMBOL:
+    format("%s ", val.symbol);
+    break;
+  }
+}
+
+void print_c_var(c_var var){
+    print_cdecl(var.var);
+    if(var.value != NULL){
+      format(" = ");
+      print_value(*var.value);
+    }
+    format(";\n");
+}
+
+static void print_expr(c_expr expr){
+  switch(expr.type){
+  case C_VAR:
+    print_c_var(expr.var);
+    break;
+  case C_RETURN:
+    format("return ");
+  case C_VALUE:
+    print_value(expr.value);
+    format(";\n");
+    break;
+  case C_BLOCK:
+    format("{\n");
+    for(size_t i = 0; i < expr.block.expr_cnt; i++){
+      print_expr(expr.block.exprs[i]);
+    }
+    format("}\n");
+  }
+}
+
+void print_block(c_block blk){
+  format("{\n");
+  for(size_t i = 0; i < blk.expr_cnt; i++){
+    print_expr(blk.exprs[i]);
+  }
+  format("}\n");
+}
+
+void print_fcn_code(c_fundef fundef){
+  print_cdecl(fundef.fdecl);
+  print_block(fundef.block);
+}
+
+void print_c_code(c_root_code code){
+  switch(code.type){
+  case C_INCLUDE:
+    format("#include \"%s\"\n",code.include);
+    break;
+  case C_INCLUDE_LIB:
+    format("#include <%s>\n",code.include);
+    break;
+  case C_FUNCTION_DEF:
+    print_fcn_code(code.fundef);
+    break;
+  case C_VAR_DEF:
+    print_c_var(code.var);
+    break;
+  case C_TYPE_DEF:
+    print_def(*code.type_def,0,false);
+    break;
+  case C_DECL:
+    print_cdecl(code.decl);
+    format(";\n");
+    break;
+  }
+}
+
+
+bool test_print_c_code(){
+  { // Simple include
+    c_root_code c1;
+    c1.type = C_INCLUDE_LIB;
+    c1.include = "stdio.h";
+    print_c_code(c1);
+  }
+  
+  { // Complex, function definition
+    c_value cv1a1;
+    cv1a1.type = C_INLINE_VALUE;
+    cv1a1.raw.value = "\"hello world!\"";
+    cv1a1.raw.type = &char_ptr_def;
+
+    c_value a_sym;
+    a_sym.type = C_SYMBOL;
+    a_sym.symbol = "a";
+
+    c_value cv1;
+    cv1.type = C_FUNCTION_CALL;
+    cv1.call.name = "printf";
+
+    cv1.call.arg_cnt = 1;
+    cv1.call.args = &a_sym;
+
+    c_expr expr;
+    expr.type = C_VALUE;
+    expr.value = cv1;
+    
+    c_fundef fundef;
+    type_def ftype;
+    ftype.kind = FUNCTION;
+    ftype.fcn.cnt = 0;
+    ftype.fcn.ret = &char_ptr_def;
+    
+    c_expr var;
+    decl v;
+    v.name = "a";
+    v.type = char_ptr_def;
+    var.type = C_VAR;
+    var.var.var = v;
+    var.var.value = &cv1a1;
+    
+    c_expr ret;
+    ret.type = C_RETURN;
+    ret.value = a_sym;
+
+    c_expr exprs2[] = {var, expr, ret};
+    
+    c_block block;
+    block.exprs = &exprs2;
+    block.expr_cnt = array_count(exprs2);
+    
+    c_expr expr3;
+    expr3.type = C_BLOCK;
+    expr3.block = block;
+      
+    fundef.block.exprs = &expr3;
+    fundef.block.expr_cnt = 1;
+
+    decl fdecl;
+    fdecl.type = ftype;
+    fdecl.name = "print_test";
+    fundef.fdecl = fdecl;
+    
+    c_root_code c2;
+    c2.type = C_FUNCTION_DEF;
+    c2.fundef = fundef;
+    print_c_code(c2);
+  }
+
+  { // Complex type expansion
+    c_root_code c3;
+    c3.type = C_TYPE_DEF;
+    c3.type_def = &type_def_def;
+    print_c_code(c3);
+  }
+
+  return TEST_SUCCESS;
+}
