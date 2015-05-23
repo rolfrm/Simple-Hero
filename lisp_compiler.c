@@ -528,14 +528,14 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   fclose(str);
   print_def(ret_type,0,false);
   format(" %.*s(",name.value.strln,name.value.value);
-  for(int i = 0; i > fcn_var_cnt; i++){
+  /*for(int i = 0; i > fcn_var_cnt; i++){
     char name
     decl dcl;
     
     print_cdecl(dcl);
     if(i != fcn_var_cnt - 1)
       format(",");
-  }
+      }*/
   printf("Str: %s\n",tmpbuf);
   
 
