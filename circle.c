@@ -3,9 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../bitguy/linmath.h"
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
+#include <iron/full.h>
 #include "color.h"
 #include "circle.h"
 

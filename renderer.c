@@ -8,9 +8,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
+#include <iron/full.h>
 #include "color.h"
 #include "circle.h"
 #include "game_object.h"
