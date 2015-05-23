@@ -40,7 +40,6 @@ struct _symbol_stack{
   symbol_stack * tail;
 };
 
-
 __thread symbol_stack * symbolstack = NULL;
 
 void with_symbols(var_def * vars, size_t vars_cnt, void (*fcn)()){
@@ -1151,3 +1150,8 @@ bool tccs_test2(){
   tcc_delete(tccs);
   return TEST_SUCCESS;
 }
+
+typedef struct{
+  c_root_code * c_code;
+  size_t code_cnt;
+}compiled_lisp;
