@@ -7,9 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-
+#include <iron/full.h>
 char * take_while(char * data, bool (* fcn)(char char_code)){
   while(fcn(data[0])) data++;
   return data;
