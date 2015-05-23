@@ -1,11 +1,5 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
+#include <iron/full.h>
 #include <stdlib.h>
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
 #include "color.h"
 #include "circle.h"
 #include "game_object.h"
@@ -15,7 +9,7 @@
 
 // consider moving to utils.
 char * array2str(char * data, size_t len){
-  void * out_data = malloc(len + 1);
+  void * out_data = alloc(len + 1);
   memcpy(out_data,data,len);
   data[len] = 0;
   return out_data;
@@ -35,10 +29,10 @@ void lisp_result_delete(lisp_result * r){
   case STRING:
   case KEYWORD:
   case SYMBOL:
-    free(r->data_str);
+    dealloc(r->data_str);
     break;
   case TYPEID_ENTITY:
-    free(r->entity.id);
+    dealloc(r->entity.id);
     break;
   default:
     break;
@@ -106,7 +100,7 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
 	  goto jmperror;
 	}
       }
-      circle_graph_node * cg = malloc(sizeof(circle_graph_node));
+      circle_graph_node * cg = alloc(sizeof(circle_graph_node));
       if(strcmp(name, "add")){
 	cg->func = ADD;
       }else if(strcmp(name, "sub")){
@@ -148,7 +142,7 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
 	  }else{
 	    goto jmperror;
 	  }
-	  free(results[i -1].data_str);
+	  dealloc(results[i -1].data_str);
 	}else if(r.typeid == TYPEID_CIRCLE){
 	  entity.circle = r.circle;
 	}else{
