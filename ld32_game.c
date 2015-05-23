@@ -1,13 +1,6 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
+#include <iron/full.h>
 #include <stdlib.h>
-#include <math.h>
 #include "microthreads.h"
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
 #include "color.h"
 #include "circle.h"
 #include "game_object.h"
@@ -17,7 +10,7 @@
 #include "lisp_parser.h"
 #include "lisp_interpreter.h"
 #include "game_controller.h"
-
+#include <stdio.h>
 extern bool faulty;
 
 
@@ -137,7 +130,7 @@ void ld32_main(){
   
   test_circle();
   if(!test_util_hash_table()){
-    printf("ERROR\n");
+    logd("ERROR\n");
   }
   
   game_state state;
@@ -149,11 +142,11 @@ void ld32_main(){
   
   void quitfcn (){
     state.is_running = false;
-    printf("qqquiiit!\n");
+    logd("qqquiiit!\n");
   }
   
   void printhi(){
-    printf("hi..\n");
+    logd("hi..\n");
   }
   
   game_renderer * renderer = renderer_load();
@@ -188,7 +181,7 @@ void ld32_main(){
   }
 
   void reload_game(){
-    printf("reloading..\n");
+    logd("reloading..\n");
     unload_level(&state);
     load_game();
   }
@@ -204,7 +197,7 @@ void ld32_main(){
   state.selected_idx = 0;
   load_game();
   //for(int i = 0; i < 100; i++){
-  //  printf("reloading..\n");
+  //  logd("reloading..\n");
   //  reload_game();
   //}
   while(state.is_running){
@@ -212,11 +205,11 @@ void ld32_main(){
       entity * ent = state.entities + i;
       circ_tree * ct = state.trees + i;
       if(ent == player_ent)
-	vec2_print(ct->circles[i].xy); printf("\n");
+	vec2_print(ct->circles[i].xy); logd("\n");
       int max_leaf = circle_tree_max_leaf(ct->tree) + 1;
-      printf(" -- ");
+      logd(" -- ");
       vec2_print(ent->xy);
-      printf(" -- \n");
+      logd(" -- \n");
       for(int i = 0; i < max_leaf;i++){
 	ct->circles[i].xy = vec2_add(ct->circles[i].xy,ent->xy);
       }
@@ -242,9 +235,9 @@ void ld32_main(){
 	if(isnan(movea.x) || isnan(movea.y))
 	  continue;
 	if(collides){
-	  printf("collsion! ");
+	  logd("collsion! ");
 	  vec2_print(move_out);
-	  printf("\n");
+	  logd("\n");
 	}
 	entity * enta = state.entities + i;
 	entity * entb = state.entities + j;
@@ -294,7 +287,7 @@ void ld32_main(){
       switch(evt.type){
       case QUIT:
 	state.is_running = false;
-	printf("Quit pls!\n");
+	logd("Quit pls!\n");
       case KEY:
 	game_controller_update_kb(&gc,evt.key);
 	break;
@@ -307,7 +300,7 @@ void ld32_main(){
     state.selected_idx += gcdif.select_delta != 0 ? gc.select_delta : 0;
     if(gcdif.select_accept == 1){
       
-      printf("Enter!\n");
+      logd("Enter!\n");
       logitem * itm = get_logoption(logitems,array_count(logitems),state.selected_idx);
       if(itm != NULL) itm->cb(NULL);
     }
