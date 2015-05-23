@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
-
+#include <iron/types.h>
+#include <iron/linmath.h>
+#include <iron/utils.h>
+#include <iron/log.h>
 #include "color.h"
 #include "vox.h"
 #include "vox_internal.h"
