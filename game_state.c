@@ -1,11 +1,5 @@
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
+#include <iron/full.h>
 #include <stdlib.h>
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
 #include "color.h"
 #include "circle.h"
 #include "game_object.h"
@@ -20,7 +14,7 @@ int circle_graph_count_circles(circle_graph graph){
 }
 
 void circle_graph_count_stats(circle_graph graph, u32 * leafs, u32 * nodes){
-  printf("GRAPH TYPE: %i\n",graph.type);
+  logd("GRAPH TYPE: %i\n",graph.type);
   if(graph.type == CG_LEAF){
     *leafs += 1;
     return;
@@ -50,7 +44,7 @@ circ_tree * make_circ_tree(entity * entities, int count){
   u32 node_cnt = 0;
   for(int i = 0; i < count ; i++){
     circle_graph_count_stats(entities[i].circle, &circle_cnt,&node_cnt);	       
-    printf("allocating.. %i %i\n",node_cnt, circle_cnt);
+    logd("allocating.. %i %i\n",node_cnt, circle_cnt);
   }
   node_cnt += circle_cnt; //need leaf nodes as well
   
@@ -98,7 +92,7 @@ circ_tree * make_circ_tree(entity * entities, int count){
     log("item %i\n",i );
     int size = circle_tree_size(circ_trees[i].tree);
     int leafs = circle_tree_max_leaf(circ_trees[i].tree);
-    printf("size: %i, leafs: %i\n",size,leafs);
+    logd("size: %i, leafs: %i\n",size,leafs);
   }
 
   return circ_trees;
