@@ -1,16 +1,8 @@
 // voxels are packed tightly into an array
 // [leaf? color (ifleaf)[subleaf subleaf subleaf subleaf subleaf subleaf subleaf subleaf]
+#include <iron/full.h>
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <math.h>
-
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
-#include "../bitguy/linmath.h"
 
 #include "vox.h"
 #include "vox_internal.h"
@@ -69,7 +61,7 @@ bool tree_test(){
   TEST_ASSERT(tree_is_leaf(node));
   voxtree_ctx * ctx = voxtree_ctx_make_from_ptr(vt, 17 * 2);
   node = tree_leaf_to_node(node, ctx);
-  printf("new capacity: %i %i\n",voxtree_ctx_capacity(ctx), voxtree_ctx_size(ctx));
+  logd("new capacity: %i %i\n",voxtree_ctx_capacity(ctx), voxtree_ctx_size(ctx));
   TEST_ASSERT(voxtree_ctx_capacity(ctx)>= voxtree_ctx_size(ctx));
   int treesize = tree_size(voxtree_ctx_tree(ctx));
   
