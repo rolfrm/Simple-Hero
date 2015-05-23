@@ -1,8 +1,4 @@
-#include <stdint.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <iron/full.h>
 #include "lisp_parser.h"
 #include <libtcc.h>
@@ -19,7 +15,7 @@ bool fcn_def_cmp(fcn_def a, fcn_def b){
 }
 
 compiler_state * compiler_make(){
-  return calloc(1, sizeof(compiler_state));
+  return alloc0(sizeof(compiler_state));
 }
 
 void tccerror(void * opaque, const char * msg){
@@ -86,7 +82,7 @@ type_def * get_type_def(char * name, size_t len){
   compiler_state * c = lisp_state;
   for(size_t i = 0;i < c->var_cnt; i++){
     var_def * v = c->vars + i;
-    printf("loc type\n");
+    logd("loc type\n");
     if(false == type_def_cmp(v->type,type_def_def))
       goto next_item;
     type_def * d = (type_def *) v->data;
@@ -94,7 +90,7 @@ type_def * get_type_def(char * name, size_t len){
     if(d->kind == SIMPLE){
       tname = d->simple.name;
     }
-    printf("TYPE: %s\n",tname);
+    logd("TYPE: %s\n",tname);
     if(tname != NULL){
       if(strncmp(tname,name,len) ==0){
 	return d;
@@ -332,11 +328,11 @@ compiled_expr compile_expr(expr * e){
     format("{\n %s %s;\n}", type_def_cmp(void_def,td) ? "" : "return", s.buffer); 
   }
   
-  printf(s.buffer);
+  logd(s.buffer);
   with_format_out(stream,expand_deps);
   compstate = olds;
   fclose(stream);
-  printf("Compiling:\n--------------\n\n%s\n\n ------------\n\n", prebuffer);
+  logd("Compiling:\n--------------\n\n%s\n\n ------------\n\n", prebuffer);
 
   TCCState * tccs = tcc_new();
   tcc_set_lib_path(tccs,".");
@@ -354,7 +350,7 @@ compiled_expr compile_expr(expr * e){
     return err;
   }
   int size = tcc_relocate(tccs, NULL);
-  tcc_relocate(tccs,malloc(size));
+  tcc_relocate(tccs,alloc(size));
   if(size == -1){
     ERROR("Unable to link %s\n",s.buffer);
     return err;
@@ -362,8 +358,8 @@ compiled_expr compile_expr(expr * e){
   
   void * fcn = tcc_get_symbol(tccs, "__eval");
   tcc_delete(tccs);
-  free(prebuffer);
-  free(s.buffer);
+  dealloc(prebuffer);
+  dealloc(s.buffer);
   
   if(fcn == NULL){
     ERROR("Unable to create function");
@@ -406,7 +402,7 @@ bool read_decl(expr dclexpr, decl * out){
 	expr name = sexpr.sub_exprs[0];
 	expr type = sexpr.sub_exprs[1];
 	if(name.type == VALUE && name.value.type == SYMBOL){
-	  out->name = malloc(name.value.strln + 1);
+	  out->name = alloc(name.value.strln + 1);
 	  strncpy(out->name,name.value.value,name.value.strln);
 	  out->type = _type_macro(type);
 	  return false == type_def_cmp(error_def,out->type);
@@ -433,9 +429,9 @@ type_def _type_macro(expr typexpr){
       for(int i = 0; i < sexp.sub_expr_count - 2; i++){
 	COMPILE_ASSERT(read_decl(sexp.sub_exprs[i + 2], args + i));
       } 
-      out.fcn.ret = malloc(sizeof(type_def));
+      out.fcn.ret = alloc(sizeof(type_def));
       *out.fcn.ret = ret;
-      out.fcn.args = malloc(sizeof(args));
+      out.fcn.args = alloc(sizeof(args));
       memcpy(out.fcn.args,args,sizeof(args));
       out.fcn.cnt = array_count(args);
       return out;
@@ -453,7 +449,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t);
 type_def type_macro(expr typexpr){
   static int _typeid = 0;
   _typeid++;
-  char * typeid = malloc(10);
+  char * typeid = alloc(10);
   sprintf(typeid, "type%i",_typeid);
   type_def td = _type_macro(typexpr);
 
@@ -493,7 +489,7 @@ type_def new_macro(expr typexpr, expr body){
 //   }
 void seek_back_newline(FILE * f);
 type_def defun_macro(expr name, expr typexpr, expr body){
-  printf("macro fun..\n");
+  logd("macro fun..\n");
   COMPILE_ASSERT(typexpr.type == EXPR && typexpr.sub_expr.sub_expr_count >= 0);
   u64 fcn_var_cnt = typexpr.sub_expr.sub_expr_count;
   var_def fcn_vars[fcn_var_cnt];
@@ -534,7 +530,7 @@ type_def defun_macro(expr name, expr typexpr, expr body){
     if(i != fcn_var_cnt - 1)
       format(",");
       }*/
-  printf("Str: %s\n",tmpbuf);
+  logd("Str: %s\n",tmpbuf);
   
 
   //type_def td = _type_macro(stypexpr);
@@ -582,9 +578,9 @@ type_def with_split_scope(expr sub_scope, void (*fcn) ()){
   seek_back_newline(_str);
   size_t start = ftell(_str);
   size_t len = end - start;
-  char * savebuffer = malloc(len);
+  char * savebuffer = alloc(len);
   fread(savebuffer, len, len, _str);
-  printf("Savebuffer '%s' length='%i'\n",savebuffer,len);
+  logd("Savebuffer '%s' length='%i'\n",savebuffer,len);
   char * buf = NULL;
   size_t size = 0;
   FILE * str = open_memstream(&buf, &size);
@@ -603,8 +599,8 @@ type_def with_split_scope(expr sub_scope, void (*fcn) ()){
   else
     format("(ret%i);", retid);
 
-  free(savebuffer);
-  free(buf);
+  dealloc(savebuffer);
+  dealloc(buf);
   return td;
 }
 // does nothing just demos scope splitting.
@@ -747,7 +743,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   tcc_compile_string(tccs, cdecl);
   
   int size = tcc_relocate(tccs, NULL);
-  char * codebuf = malloc(size);
+  char * codebuf = alloc(size);
   tcc_relocate(tccs, codebuf);
   void * var = tcc_get_symbol(tccs, name);
   var_def vdef;
@@ -756,7 +752,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
   vdef.data = var;
   list_add((void **)&c->vars, &c->var_cnt,&vdef,sizeof(var_def));
   tcc_delete(tccs);
-  free(cdecl);
+  dealloc(cdecl);
   return var;
 }
 bool tccs_test2();
@@ -814,7 +810,7 @@ bool seek_test(){
   fclose(mem);
   if(strcmp("hello\nhello2\nhello5?",expr_reader) != 0)
     return TEST_FAIL;
-  free(expr_reader);
+  dealloc(expr_reader);
   return TEST_SUCCESS;
 }
 
@@ -831,11 +827,11 @@ bool lisp_compiler_test(){
     symbol_stack * stk = symbolstack;
     while(stk != NULL){
       stacksize += 1;
-      printf("Symbol stack: %i %i\n",stk->vars, stk->vars_cnt);
+      logd("Symbol stack: %i %i\n",stk->vars, stk->vars_cnt);
       for(int i = 0 ; i < stk->vars_cnt;i++){
-	printf(" %i",stk->vars[i].name);
+	logd(" %i",stk->vars[i].name);
       }
-      printf("\n");
+      logd("\n");
       stk = stk->tail;
     }
   }
@@ -843,7 +839,7 @@ bool lisp_compiler_test(){
   void a1(){
     with_symbols(vars2,array_count(vars2),a2);
   }
-  printf("Stacksize; %i\n", stacksize);
+  logd("Stacksize; %i\n", stacksize);
 
   with_symbols(vars1,array_count(vars1),a1);
   TEST_ASSERT(stacksize == 2);
@@ -856,7 +852,7 @@ bool lisp_compiler_test(){
   decl dcl;
   dcl.name = "test";
   dcl.type = void_ptr_def;
-  char * testd = calloc(1,10000);
+  char * testd = alloc0(10000);
   print_cdecl(dcl);
   load_cdecl(testd, 10000, dcl);
   type_def defs[1000];
@@ -912,7 +908,7 @@ bool lisp_compiler_test(){
 
   {// the lol macro
     type_def lol(expr exp){
-      printf("LOL: Compiling stuff..\n");
+      logd("LOL: Compiling stuff..\n");
       return compile_iexpr(exp);
     }
     cmacro_def * var = (cmacro_def *) compiler_define_variable(c, "lol", cmacro_def_def);
@@ -1043,28 +1039,28 @@ void eval_print(compiled_expr cexpr){
     ERROR("Unable to compile..\n");
   }else if(type_def_cmp(cexpr.result_type, char_ptr_def)){
     char * (*eval) () = cexpr.fcn;
-    printf("'%s' : char*\n", eval());
+    logd("'%s' : char*\n", eval());
   }
   else if(type_def_cmp(cexpr.result_type, void_def)){
     void (* __eval) () = cexpr.fcn;
     __eval();
-    printf("() : unit\n");
+    logd("() : unit\n");
   }
   else if(type_def_cmp(cexpr.result_type, i64_def)){
     i64 (*eval) () = cexpr.fcn;
     eval();
-    printf("%i : i64\n",eval());
+    logd("%i : i64\n",eval());
   }else if(type_def_cmp(cexpr.result_type, type_def_def)){
 
     type_def (*eval) () = cexpr.fcn;
     type_def d = eval();
     UNUSED(d);
     //print_def(d,0,false);
-    printf(" : type_def\n");
+    logd(" : type_def\n");
   }
 }
 
-bool start_read_eval_print_loop(){
+/*bool start_read_eval_print_loop(){
   format("C-LISP REPL\n");
 
   char * expr_reader = NULL;
@@ -1091,7 +1087,7 @@ bool start_read_eval_print_loop(){
     }
     if(expr_state > 0)
       continue;
-    printf("Expr state: %i %s\n", expr_state, expr_reader);
+    logd("Expr state: %i %s\n", expr_state, expr_reader);
     char * next = expr_reader;
     while(next != NULL && *next != 0){
       expr out_expr[2];
@@ -1112,19 +1108,19 @@ bool start_read_eval_print_loop(){
     }
   reset:
     fclose(mem);
-    free(expr_reader);
+    dealloc(expr_reader);
     expr_reader = NULL;
     cnt = 0;
   } 
   return true;
-}
+  }*/
 
 void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
   format("Compiling %s\n", code);
   int fail = tcc_compile_string(tccs,code);
   format("COMPILE: %i\n",!fail);
   int size = tcc_relocate(tccs, NULL);
-  char * codebuf = malloc(size);
+  char * codebuf = alloc(size);
   fail = tcc_relocate(tccs, codebuf);
   format("RELOCATE: %i\n",!fail);
   return tcc_get_symbol(tccs, symbol);

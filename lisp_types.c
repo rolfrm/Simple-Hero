@@ -3,8 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
+#include <iron/types.h>
+#include <iron/utils.h>
+#include <iron/log.h>
+#include <iron/test.h>
+#include <iron/fileio.h>
 
 #include "lisp_types.h"
 #include "lisp_std_types.h"
