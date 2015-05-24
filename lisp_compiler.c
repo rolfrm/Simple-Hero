@@ -53,7 +53,6 @@ void with_symbols(var_def * vars, size_t vars_cnt, void (*fcn)()){
   symbolstack = oss;
 }
 
-
 var_def * get_variable(char * name, size_t name_len){
   symbol_stack * ss = symbolstack;
   while(ss != NULL){
@@ -136,8 +135,6 @@ void add_dep(char * name){
   }
   list_add((void **) &s->deps, &s->dep_cnt, &name, sizeof(name));
 }
-
-
 
 static type_def compile_sexpr(sub_expr sexpr){
   fcn_def * fcn;
@@ -1150,8 +1147,3 @@ bool tccs_test2(){
   tcc_delete(tccs);
   return TEST_SUCCESS;
 }
-
-typedef struct{
-  c_root_code * c_code;
-  size_t code_cnt;
-}compiled_lisp;

@@ -13,6 +13,8 @@
 #include "renderer.h"
 #include <stdarg.h>
 
+
+
 #include "vox.h"
 #include "vox_raster.h"
 const char * allowed_errors[] ={
@@ -47,8 +49,10 @@ bool lisp_compiler_test();
 void circle_sg_main();
 void ld32_main();
 bool test_lisp_parser();
+bool test_lisp2c();
 int main(){
   TEST(test_lisp_parser);
+  TEST(test_lisp2c);
   TEST(lisp_compiler_test);
   return 0;
   //TEST(test_circle);

@@ -45,3 +45,5 @@ char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count);
 void delete_expr(expr * expr);
 void print_expr(expr * expr);
 bool test_lisp_parser();
+
+expr * lisp_parse_all(char * code, size_t * out_cnt);

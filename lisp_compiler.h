@@ -52,3 +52,5 @@ compiled_expr compile_expr(expr * e);
 type_def compile_iexpr(expr expr1);
 void compiler_set_state(compiler_state * ls);
 void write_dependencies(type_def * deps);
+
+bool test_lisp2c();

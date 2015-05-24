@@ -226,6 +226,21 @@ char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
   return code;
 }
 
+expr * lisp_parse_all(char * code, size_t * out_cnt){
+  *out_cnt = 0;
+  expr * exprs = NULL;
+  expr expr;
+  char * next = code;
+  while(next != NULL && *next != 0){
+    size_t cnt = 1;
+    next = lisp_parse(next, &expr, &cnt);
+    if(cnt == 0 || next == NULL)
+      break;
+    list_add((void **) &exprs, out_cnt, &expr, sizeof(expr));
+  }
+  return exprs;
+}
+
 static bool test_infinite_bug(){
   // this turned out to not be a bug.
   char * code = "(print_string \"Hello World\\n\")(glfwInit)(print_string (glfwGetVersionString))";
@@ -252,3 +267,6 @@ bool test_lisp_parser(){
   TEST(test_infinite_bug);
   return TEST_SUCCESS;
 }
+
+
+

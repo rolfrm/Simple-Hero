@@ -32,21 +32,30 @@ static type_def compile_value(compiler_state * c, c_value * val, value_expr e){
     break;
   }
 }
+static type_def _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e );
+static type_def __compile_expr(compiler_state * c, c_block * block, c_value * value, sub_expr * se){
+  type_def sub_types[se->sub_expr_count];
+  c_value val[se->sub_expr_count];
+  for(size_t i = 0; i < se->sub_expr_count; i++){
+    expr * e = se->sub_exprs + i;
+    sub_types[i] = _compile_expr(c, block, val + i, *e);
+  }
+}
 	  
-static type_def _compile_expr(compiler_state * c, c_block * block, expr e ){
+static type_def _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e ){
   type_def td;
-  c_expr * exprs;
+  c_expr * exprs;  
   size_t expr_cnt;
-  c_value val;
   switch(e.type){
   case EXPR:
+    return __compile_expr(c, block, val, &e.sub_expr);
     break;
   case VALUE:
-    td = compile_value(c,&val,e.value);
+    td = compile_value(c,val,e.value);
     expr_cnt = 1;
     exprs = alloc(sizeof(c_expr));
     exprs->type = C_VALUE;
-    exprs->value = val;
+    exprs->value =*val;
     break;
   }
   block->exprs = exprs;
@@ -56,5 +65,26 @@ static type_def _compile_expr(compiler_state * c, c_block * block, expr e ){
 }
 
 compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
+  for(size_t i = 0; i < cnt; i++){
+    c_value val;
+    c_block blk;
+    blk.expr_cnt = 0;
+    blk.exprs = NULL;
+    type_def t = _compile_expr(c, &blk, &val, exp[i]);
+    list_add((void **) &blk.exprs, &blk.expr_cnt, &val, sizeof(val));
+  }
+
+  return NULL;
+}
+
+
+
+bool test_lisp2c(){
   
+  char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
+  size_t exprcnt;
+  expr * exprs = lisp_parse_all(test_code, &exprcnt);
+  compiler_state * c = compiler_make();
+  logd("parsed %i expr(s).\n", exprcnt);
+  return TEST_FAIL;
 }
