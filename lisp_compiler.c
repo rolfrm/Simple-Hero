@@ -3,14 +3,21 @@
 #include "lisp_parser.h"
 #include <libtcc.h>
 #include "lisp_types.h"
-#include "lisp_std_types.h"
 #include "lisp_compiler.h"
+#include "lisp_std_types.h"
 
 static __thread comp_state * compstate = NULL;
 static __thread compiler_state * lisp_state = NULL;
 
+void with_compiler(compiler_state * c, void (* fcn)()){
+  compiler_state * old = lisp_state;
+  lisp_state = c;
+  fcn();
+  lisp_state = old;
+}
+
 bool fcn_def_cmp(fcn_def a, fcn_def b){
-  return type_def_cmp(a.type,b.type)
+  return a.type == b.type
     && strcmp(a.name,b.name) == 0;
 }
 
@@ -201,7 +208,7 @@ static type_def compile_sexpr(sub_expr sexpr){
     }
   }
   format(")");
-  return *(fcn->type.fcn.ret);
+  return *fcn->type.fcn.ret;
 }
 
 type_def compile_value(value_expr vexpr){
@@ -432,15 +439,41 @@ type_def _type_macro(expr typexpr){
       out.fcn.cnt = array_count(args);
       return out;
     }
-  }else{
-    value_expr vexp = typexpr.value;
-    COMPILE_ASSERT(vexp.type == SYMBOL);
-    type_def * td = get_type_def(vexp.value,vexp.strln);
-    COMPILE_ASSERT(td != NULL);
-    return *td;
+    }else{
+      value_expr vexp = typexpr.value;
+      COMPILE_ASSERT(vexp.type == SYMBOL);
+      type_def * td = get_type_def(vexp.value,vexp.strln);
+      COMPILE_ASSERT(td != NULL);
+      return *td;
+    }
+    return error_def;
+}
+
+#include "uthash.h"
+
+typedef struct _type_tree type_tree;
+
+struct _type_tree{
+  type_tree * sub_tree[type_def_kind_cnt];
+  type_def * payload;
+};
+
+type_def * _locate_type(type_tree * tree, type_def td){
+  switch(td.kind){
+  case SIMPLE:
+    ERROR("This should never happen");
+    return NULL;
+  case POINTER:
   }
 }
-void * compiler_define_variable(compiler_state *c, char * name, type_def t);
+
+type_def * locate_type(type_def td){
+  static type_tree * tree = NULL;
+  if(tree == NULL){
+    tree = alloc0(sizeof(type_tree));
+  }
+  return _locate_type(tree, td);
+}
 
 type_def type_macro(expr typexpr){
   static int _typeid = 0;
@@ -449,7 +482,7 @@ type_def type_macro(expr typexpr){
   sprintf(typeid, "type%i",_typeid);
   type_def td = _type_macro(typexpr);
 
-  type_def * typevar = (type_def *) compiler_define_variable(lisp_state,typeid,type_def_def);
+  type_def * typevar = (type_def *) compiler_define_variable(lisp_state,typeid,&type_def_def);
   *typevar = td;
   add_dep(typeid);
   format(typeid);
@@ -707,7 +740,7 @@ void write_dependencies(type_def * deps){
   }
 }
 
-void * compiler_define_variable(compiler_state *c, char * name, type_def t){
+void * compiler_define_variable(compiler_state *c, char * name, type_def * t){
   // this is a bit complex. I need to run the code which defines and sets that variable
   // todo: It is probably not nessesary to invoke tcc just to figure out the size of t.
 
@@ -736,6 +769,7 @@ void * compiler_define_variable(compiler_state *c, char * name, type_def t){
 
   TCCState * tccs = mktccs();
 
+  log("compiling '%s'\n",cdecl);
   tcc_compile_string(tccs, cdecl);
   
   int size = tcc_relocate(tccs, NULL);
@@ -763,6 +797,19 @@ fcn_def defext(char * name, type_def type){
   fdef.ptr = NULL;
   //
   return fdef;
+}
+
+void compiler_reg_type(compiler_state *c, char * name, type_def * t){
+  type_def * typevar = (type_def *) compiler_define_variable(c,name,type_def_ptr_def);
+  *typevar = t;
+}
+
+void compiler_load_types(compiler_state * c){
+  void r(char * name, type_def * def){
+    compiler_reg_type(c,name,def);
+  }
+  r("i64_def",&i64_def);
+  
 }
 
 void print_string(char * string){
@@ -815,8 +862,8 @@ bool lisp_compiler_test(){
   TEST(test_print_c_code);
   TEST(seek_test);
   { // testing var stack
-  var_def vars1[] = {{1,void_ptr_def,0},  {2,void_ptr_def,0}};
-  var_def vars2[] = {{4,void_ptr_def,0}, {3,void_ptr_def,0}, {4,void_ptr_def,0}};
+  var_def vars1[] = {{1,&void_ptr_def,0},  {2,&void_ptr_def,0}};
+  var_def vars2[] = {{4,&void_ptr_def,0}, {3,&void_ptr_def,0}, {4,&void_ptr_def,0}};
   int stacksize = 0;
   
   void a2(){
@@ -824,7 +871,7 @@ bool lisp_compiler_test(){
     while(stk != NULL){
       stacksize += 1;
       logd("Symbol stack: %i %i\n",stk->vars, stk->vars_cnt);
-      for(int i = 0 ; i < stk->vars_cnt;i++){
+      for(size_t i = 0 ; i < stk->vars_cnt;i++){
 	logd(" %i",stk->vars[i].name);
       }
       logd("\n");
@@ -854,8 +901,8 @@ bool lisp_compiler_test(){
   type_def defs[1000];
   for(size_t i = 0; i < array_count(defs);i++)
     defs[i] = void_def;
-  make_dependency_graph(defs,type_def_def);
-  make_dependency_graph(defs,decl_def);
+  make_dependency_graph(defs,&type_def_def);
+  make_dependency_graph(defs,&decl_def);
 
   { // print_string definition
     static type_def print_string_def;

@@ -1,5 +1,5 @@
 OPT = -g
-SOURCES =  simplehero.c ../iron/linmath.c ../iron/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c lisp_compiler.c lisp_types.c lisp_std_types.c ../iron/mem.c ../iron/fileio.c ../iron/array.c ../iron/math.c ../iron/time.c ../iron/hashtable.c ../iron/log.c lisp_compiler2.c
+SOURCES =  simplehero.c ../iron/linmath.c ../iron/utils.c renderer.c coroutines.c simplehero-ai.c circle.c sdl_utils.c uivector.c event.c sdl_event.c lisp_parser.c ld32_game.c lisp_interpreter.c game_controller.c game_state.c vox.c vox_internal.c vox_raster.c lisp_types.c lisp_std_types.c ../iron/mem.c ../iron/fileio.c ../iron/array.c ../iron/math.c ../iron/time.c ../iron/hashtable.c ../iron/log.c  lisp_symbols.c lisp_compiler2.c #lisp_compiler.c
 CC = gcc
 TARGET = run
 OBJECTS =$(SOURCES:.c=.o)

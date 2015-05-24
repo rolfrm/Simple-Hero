@@ -2,14 +2,14 @@
 
 typedef struct _fcn_def{
   char * name;
-  type_def type;
+  type_def * type;
   u8 is_extern;
   void * ptr;
 }fcn_def;
 
 typedef struct{
   char * name;
-  type_def type;
+  type_def * type;
   void * data;
 }var_def;
 
@@ -42,6 +42,10 @@ typedef struct{
   void * fcn;
 }cmacro_def;
 
+void * compiler_define_variable(compiler_state *c, char * name, type_def * t);
+void compiler_reg_type(compiler_state *c, char * name, type_def * t);
+void compiler_load_types(compiler_state *);
+
 bool fcn_def_cmp(fcn_def a, fcn_def b);
 comp_state comp_state_make();
 compiler_state * compiler_make();
@@ -52,5 +56,5 @@ compiled_expr compile_expr(expr * e);
 type_def compile_iexpr(expr expr1);
 void compiler_set_state(compiler_state * ls);
 void write_dependencies(type_def * deps);
-
+void with_compiler(compiler_state * c, void (* fcn)());
 bool test_lisp2c();

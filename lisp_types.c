@@ -8,11 +8,11 @@
 #include <iron/log.h>
 #include <iron/test.h>
 #include <iron/fileio.h>
-
+#include <iron/mem.h>
 #include "lisp_types.h"
 #include "lisp_std_types.h"
 
-bool type_def_cmp(type_def a, type_def b){
+/*bool type_def_cmp(type_def a, type_def b){
   if(a.kind != b.kind)
     return false;
   switch(a.kind){
@@ -39,7 +39,7 @@ bool type_def_cmp(type_def a, type_def b){
   }
   ERROR("Should not happen!\n");
   return false;
-}
+  }*/
 
 type_def make_simple(char * name, char * cname){
   static type_def def;
@@ -56,117 +56,117 @@ type_def make_ptr(type_def * def){
   return out;
 }
 
-void print_def(type_def type, int ind, bool is_decl){
-  type_def inner;
-  switch(type.kind){
+void print_def(type_def * type, bool is_decl){
+  type_def * inner;
+  switch(type->kind){
   case SIMPLE:
-    format("%*s%s ",ind, "",type.simple.name);
+    format("%s ", type->simple.name);
     break;
   case STRUCT:
     if(is_decl){
-      format("%*s %s ",ind, "  ", type.cstruct.name);
+      format("%s ", type->cstruct.name);
     }else{
-      format("%*s struct %s{\n",ind, "  ", type.cstruct.name == NULL ? "" : type.cstruct.name);
+      format("struct %s{\n", type->cstruct.name == NULL ? "" : type->cstruct.name);
       
-      for(i64 i = 0; i < type.cstruct.cnt; i++){
-	print_def(type.cstruct.members[i].type, ind + 1, true);
-	if(type.cstruct.members[i].name != NULL)
-	  format("%s;\n",type.cstruct.members[i].name);
+      for(i64 i = 0; i < type->cstruct.cnt; i++){
+	print_def(type->cstruct.members[i].type, true);
+	if(type->cstruct.members[i].name != NULL)
+	  format("%s;\n",type->cstruct.members[i].name);
       }
-      format("%*s }",ind, "  "); 
+      format("}"); 
     }
     break;
   case POINTER:
-    print_def(*(type.ptr.inner), ind, true);
+    print_def(type->ptr.inner, true);
     format("* ");
     break;
   case ENUM:
     if(is_decl){
-      format("%s ", type.cenum.enum_name);
+      format("%s ", type->cenum.enum_name);
     }else{
-      format("%*s %s ",ind, "  ",type.cenum.enum_name);
+      format("%s ",type->cenum.enum_name);
     }
     break;
   case UNION:
-    format("%*s union {\n",ind, "  ");
+    format("union {\n");
 
-    for(i64 i = 0; i < type.cunion.cnt; i++){
-      print_def(type.cunion.members[i].type, ind + 1, false);
-      format(" %s;\n", type.cunion.members[i].name);
+    for(i64 i = 0; i < type->cunion.cnt; i++){
+      print_def(type->cunion.members[i].type, false);
+      format(" %s;\n", type->cunion.members[i].name);
     }
-    format("%*s };",ind, "  ");
+    format("};");
     break;
  
  case TYPEDEF:
-    inner = *type.ctypedef.inner;
+    inner = type->ctypedef.inner;
     char struct_name[20];
 
-    if(inner.kind == STRUCT && inner.cstruct.name == NULL){
-      sprintf(struct_name, "_%s_",type.ctypedef.name);
-      inner.cstruct.name = struct_name;
+    if(inner->kind == STRUCT && inner->cstruct.name == NULL){
+      sprintf(struct_name, "_%s_",type->ctypedef.name);
+      inner->cstruct.name = struct_name;
     }
     if(is_decl){
-      format("%s ", type.ctypedef.name);
+      format("%s ", type->ctypedef.name);
       //print_def(inner,ind,true);
     }else{
-      format("%*s typedef ", ind, "  ");
-      print_def(inner,ind,false);
-      format("%s;\n",type.ctypedef.name);
+      format("typedef ");
+      print_def(inner,false);
+      format("%s;\n",type->ctypedef.name);
     }
     
     break;
   case FUNCTION:
     // this is an error.
-    print_cdecl((decl){"anon", type});
+    //print_cdecl((decl){"anon", type});
     break;
   default:
-    ERROR("not implemented %i", type.kind);
+    ERROR("not implemented %i", type->kind);
   }
 }
 
-void make_dependency_graph(type_def * defs, type_def def){
+void make_dependency_graph(type_def ** defs, type_def * def){
 	  
-  if(type_def_cmp(void_def,def)) return;
+  if(&void_def == def) return;
    
-  switch(def.kind){
+  switch(def->kind){
   case UNION:
-    for(int i = 0; i < def.cunion.cnt; i++){
-      type_def sdef = def.cunion.members[i].type;
+    for(i64 i = 0; i < def->cunion.cnt; i++){
+      type_def * sdef = def->cunion.members[i].type;
       make_dependency_graph(defs,sdef);
     }	  
-    if(def.cunion.name == NULL) return;
+    if(def->cunion.name == NULL) return;
     break;
   case STRUCT:
-    for(int i = 0; i < def.cstruct.cnt; i++){
-      type_def sdef = def.cstruct.members[i].type;
+    for(i64 i = 0; i < def->cstruct.cnt; i++){
+      type_def * sdef = def->cstruct.members[i].type;
       make_dependency_graph(defs,sdef);
     }
 
-    if(def.cstruct.name == NULL) return;
+    if(def->cstruct.name == NULL) return;
     break;
   case POINTER:
-    def = *def.ptr.inner;
+    def = def->ptr.inner;
     break;
   case TYPEDEF:
-    make_dependency_graph(defs,*def.ctypedef.inner);
+    make_dependency_graph(defs,def->ctypedef.inner);
     break;
   case ENUM:
     return;
   case FUNCTION:
-    make_dependency_graph(defs, *def.fcn.ret);
-    for(int i = 0; i < def.fcn.cnt; i++)
-      make_dependency_graph(defs, def.fcn.args[i].type);
+    make_dependency_graph(defs, def->fcn.ret);
+    for(int i = 0; i < def->fcn.cnt; i++)
+      make_dependency_graph(defs, def->fcn.args[i].type);
     break;
   case SIMPLE:
   default:
     break;
   }
 	  
-  while(type_def_cmp(void_def,*defs) == false){
-    if(type_def_cmp(def,*defs)) return;
+  while(&void_def != *defs){
+    if(def == *defs) return;
     defs++;
   }
-  *defs = def;	  
+  *defs = def;
 }
 
 void print_value(c_value val){
@@ -202,13 +202,14 @@ void print_value(c_value val){
 }
 
 void print_c_var(c_var var){
-    print_cdecl(var.var);
+  //print_def(var.var);
+  //todo: print_cdecl(var.var);
     if(var.value != NULL){
       format(" = ");
       print_value(*var.value);
     }
     format(";\n");
-}
+    }
 
 static void print_expr(c_expr expr){
   switch(expr.type){
@@ -258,7 +259,7 @@ void print_c_code(c_root_code code){
     print_c_var(code.var);
     break;
   case C_TYPE_DEF:
-    print_def(*code.type_def,0,false);
+    print_def(code.type_def,false);
     break;
   case C_DECL:
     print_cdecl(code.decl);
@@ -267,7 +268,48 @@ void print_c_code(c_root_code code){
   }
 }
 
+#include "uthash.h"
 
+typedef struct{
+  type_def * ptr;
+  char * name;
+  UT_hash_handle hh;
+}type_item;
+static type_item * items = NULL;
+
+type_def * get_type_def(type_def def){
+
+  char * tmpbuf = NULL;
+  size_t tmpbuf_size = 0;
+  FILE * str = open_memstream(&tmpbuf,&tmpbuf_size);
+  with_format_out(str, lambda(void, (){print_def(&def, true);}));
+  fclose(str);
+
+  type_item * item = NULL;
+  HASH_FIND_STR(items, tmpbuf, item);
+  logd("got typedef: '%s' %i\n",tmpbuf, item);
+  return NULL;
+}
+
+void register_type(type_def * ptr, char * name){
+  if(name == NULL){
+    char * tmpbuf = NULL;
+    size_t tmpbuf_size = 0;
+    FILE * str = open_memstream(&tmpbuf,&tmpbuf_size);
+    with_format_out(str, lambda(void, (){print_def(ptr, true);}));
+    fclose(str);
+    name = tmpbuf;
+    logd("tmpbuf: '%s'\n",tmpbuf);
+  }
+  type_item * newitem = alloc(sizeof(type_item));
+  newitem->ptr = ptr;
+  newitem->name = name;
+  logd("Register: '%s'\n", name);
+  HASH_ADD_STR(items, name, newitem);
+}
+
+
+// test //
 bool test_print_c_code(){
   { // Simple include
     c_root_code c1;
@@ -306,7 +348,7 @@ bool test_print_c_code(){
     c_expr var;
     decl v;
     v.name = "a";
-    v.type = char_ptr_def;
+    v.type = &char_ptr_def;
     var.type = C_VAR;
     var.var.var = v;
     var.var.value = &cv1a1;
@@ -318,7 +360,7 @@ bool test_print_c_code(){
     c_expr exprs2[] = {var, expr, ret};
     
     c_block block;
-    block.exprs = &exprs2;
+    block.exprs = exprs2;
     block.expr_cnt = array_count(exprs2);
     
     c_expr expr3;
@@ -329,7 +371,7 @@ bool test_print_c_code(){
     fundef.block.expr_cnt = 1;
 
     decl fdecl;
-    fdecl.type = ftype;
+    fdecl.type = get_type_def(ftype);
     fdecl.name = "print_test";
     fundef.fdecl = fdecl;
     
@@ -347,4 +389,37 @@ bool test_print_c_code(){
   }
 
   return TEST_SUCCESS;
+}
+
+void print_cdecl(decl idecl){
+  void inner_print(decl idecl){
+    
+    type_def * def = idecl.type;
+    switch(def->kind){
+    case TYPEDEF:
+    case STRUCT:
+    case SIMPLE:
+    case POINTER:
+      print_def(def,true);
+      format("%s",idecl.name);
+      break;
+    case FUNCTION:
+      
+      print_def(def->fcn.ret,true);
+      format("%s( ",idecl.name);
+      for(i64 i = 0; i < def->fcn.cnt; i++){
+	inner_print(def->fcn.args[i]);
+	if(i + 1 != def->fcn.cnt)
+	  format(", ");
+      }
+      format(")");
+      break;
+    default:
+      ERROR("Not supported: '%i'\n", def->kind);
+    }
+  }
+
+  inner_print(idecl);
+  format(" ");
+  //format(";\n");
 }

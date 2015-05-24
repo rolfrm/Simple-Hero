@@ -20,4 +20,5 @@ type_def decl_ptr_def;
 type_def error_def;
 type_def fcn_def_def;
 type_def cmacro_def_def;
+
 void load_defs();

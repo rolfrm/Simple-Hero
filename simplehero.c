@@ -53,7 +53,7 @@ bool test_lisp2c();
 int main(){
   TEST(test_lisp_parser);
   TEST(test_lisp2c);
-  TEST(lisp_compiler_test);
+  //  TEST(lisp_compiler_test);
   return 0;
   //TEST(test_circle);
   TEST(test_utils);

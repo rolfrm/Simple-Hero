@@ -6,7 +6,8 @@ typedef enum {
   STRUCT = 3,
   UNION = 4,
   ENUM = 5,
-  TYPEDEF = 6
+  TYPEDEF = 6,
+  type_def_kind_cnt
 } type_def_kind;
 
 struct _type_def;
@@ -60,7 +61,7 @@ struct _type_def{
 
 struct _decl{
   char * name;
-  type_def type;
+  type_def * type;
 };
 
 // requires lisp_types.h
@@ -167,17 +168,18 @@ typedef struct{
   };
 }c_root_code;
 
-bool type_def_cmp(type_def a, type_def b);
 void print_cdecl(decl idecl);
 
 type_def make_simple(char * name, char * cname);
 type_def make_ptr(type_def * def);
+type_def * get_type_def(type_def def);
+void register_type(type_def * type, char * name);
 
 // simple function to calculate type dependencies.
 // writes the dependencies of a type in defs
 // descending order, so least dependent comes first.
-void make_dependency_graph(type_def * deps, type_def def);
-void print_def(type_def type, int ind, bool is_decl);
+void make_dependency_graph(type_def ** deps, type_def * def);
+void print_def(type_def * type, bool is_decl);
 
 void print_c_code(c_root_code code);
 
