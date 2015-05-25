@@ -174,21 +174,22 @@ void print_value(c_value val){
   case C_DEREF:
     format("*");
   case C_SUB_EXPR:
-    format("( ");
+    format("(");
     print_value(*val.value);
     format(")");
     break;
   case C_INLINE_VALUE:
-    format("%s ", val.raw.value);
+    format("%s", val.raw.value);
     break;
   case C_FUNCTION_CALL:
     format("%s(", val.call.name);
     for(size_t i = 0; i < val.call.arg_cnt; i++){
       print_value(val.call.args[i]);
-      if(i != val.call.arg_cnt -1)
+      if(i != val.call.arg_cnt -1){
 	format(", ");
+      }
     }
-    format(") ");
+    format(")");
     break;
   case C_OPERATOR:
     print_value(*val.operator.left);
@@ -196,7 +197,7 @@ void print_value(c_value val){
     print_value(*val.operator.right);
     break;
   case C_SYMBOL:
-    format("%s ", val.symbol);
+    format("%s", val.symbol);
     break;
   }
 }
