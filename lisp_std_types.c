@@ -41,6 +41,8 @@ void load_defs(){
   type_def_def.ctypedef.name = "type_def";
   type_def_ptr_def.kind = POINTER;
   type_def_ptr_def.ptr.inner = &type_def_def;  
+
+
   decl_ptr_def.kind = POINTER;
   decl_ptr_def.ptr.inner = &decl_def;
   
@@ -244,5 +246,6 @@ void load_defs(){
     members[2].type = &void_ptr_def;
     r2(&cmacro_def_def);
   }
+  r2(&type_def_ptr_def);
 }
 

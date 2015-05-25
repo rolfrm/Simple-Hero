@@ -123,7 +123,7 @@ type_def * type_macro(compiler_state * c, c_block * block, c_value * value, expr
   value->type = C_INLINE_VALUE;
   value->raw.value = "NULL";
   value->raw.type = &type_def_ptr_def;
-  return _compile_expr(c, block, value, symbol_expr(varname));;
+  return _compile_expr(c, block, value, symbol_expr(varname));
 }
 
 
@@ -144,9 +144,9 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
   if(fvar->type == &cmacro_def_def){
     cmacro_def * macro = fvar->data;
     logd("C MACRO '%s'\n",macro->name);
-    if(macro->arg_cnt != argcnt){
+    if(macro->arg_cnt != argcnt)
       ERROR("Unsupported number of arguments %i for %s",argcnt, macro->name);
-    }
+    
     switch(macro->arg_cnt){
     case 0:
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value)) macro->fcn)(c,block,value);
@@ -158,7 +158,31 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value, expr,expr,expr)) macro->fcn)(c,block,value,args[0],args[1],args[2]);
     }
   }else if(fvar->type->kind == FUNCTION){
-    logd("FUNCTION\n");
+    logd("*** function ***\n");
+    type_def * td = fvar->type;
+    COMPILE_ASSERT(td->fcn.cnt == argcnt);
+    
+    c_function_call call;
+    call.name = fvar->name;
+    c_value fargs[argcnt];
+    type_def * farg_types[argcnt];
+    for(i64 i = 0; i < argcnt; i++){
+      farg_types[i] = _compile_expr(c, block, fargs + i, args[i]);
+      // check types works
+      if(farg_types[i] != td->fcn.args[i].type){
+	logd("Types not matching:\n 1: %i\n", farg_types[i]);
+	print_def(farg_types[i],true);
+	logd("\n2: %i\n",td->fcn.args[i].type);	
+	print_def(td->fcn.args[i].type,true);
+	logd("\n");	
+	ERROR("Types not matching");
+      }
+    }
+    call.args = clone(fargs,sizeof(fargs));
+    value->type = C_FUNCTION_CALL;
+    value->call = call;
+    logd("*** function end ***\n");
+    return td->fcn.ret;
   }else{
     logd("Not supported..\n");
   }
@@ -243,6 +267,10 @@ type_def * str2type(char * str){
   return _type_macro(e);
 }
 
+void print_type(type_def * def){
+  print_def(def,true);
+}
+
 type_def * _type_macro(expr typexpr);
 bool test_lisp2c(){
   //type_def fcn_def =
@@ -265,12 +293,7 @@ bool test_lisp2c(){
 	{
 	  //static fcn_def printtype_def;
 	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
-	  logd("TYPE: %i\n", type);
-	  decl fdcl;
-	  fdcl.name = "anon";
-	  fdcl.type = type;
-	  print_cdecl(fdcl);
-	  logd("\n*******\n");
+	  compiler_define_variable_ptr(c, "print_type", type, print_type);
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);
