@@ -51,8 +51,7 @@ bool read_decl(expr dclexpr, decl * out){
       expr name = sexpr.sub_exprs[0];
       expr type = sexpr.sub_exprs[1];
       if(name.type == VALUE && name.value.type == SYMBOL){
-	out->name = alloc(name.value.strln + 1);
-	strncpy(out->name,name.value.value,name.value.strln);
+	out->name = fmtstr("%.*s",name.value.strln, name.value.value);
 	out->type = _type_macro(type);
 	return &error_def != out->type;
       }
@@ -74,7 +73,7 @@ type_def * _type_macro(expr typexpr){
       out.kind = FUNCTION;
       COMPILE_ASSERT(sexp.sub_expr_count > 1);
       type_def * ret = _type_macro(sexp.sub_exprs[1]);
-      COMPILE_ASSERT(&error_def == ret);
+      COMPILE_ASSERT(&error_def != ret);
       decl args[sexp.sub_expr_count - 2];
       for(int i = 0; i < sexp.sub_expr_count - 2; i++){
 	COMPILE_ASSERT(read_decl(sexp.sub_exprs[i + 2], args + i));
@@ -82,6 +81,12 @@ type_def * _type_macro(expr typexpr){
       out.fcn.ret = ret;
       out.fcn.args = clone(args, sizeof(args));
       out.fcn.cnt = array_count(args);
+      return get_type_def(out);
+    }else if (strncmp(vkind.value,"ptr",vkind.strln) == 0){
+      COMPILE_ASSERT(sexp.sub_expr_count == 2);
+      type_def out;
+      out.kind = POINTER;
+      out.ptr.inner = _type_macro(sexp.sub_exprs[1]);
       return get_type_def(out);
     }
     }else{
@@ -96,20 +101,32 @@ type_def * _type_macro(expr typexpr){
     return &error_def;
 }
 
+expr symbol_expr(char * name){
+  expr e;
+  e.type = VALUE;
+  e.value.type = SYMBOL;
+  e.value.value = name;
+  e.value.strln = strlen(name);
+  return e;
+}
+static type_def * _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e );
 
 type_def * type_macro(compiler_state * c, c_block * block, c_value * value, expr e){
+  static int typevarid = 0;
   UNUSED(c);
   UNUSED(block);
   //UNUSED(value);
   UNUSED(e);
-  //type_def * t =_type_macro(e);
+  type_def * t =_type_macro(e);
+  char * varname = fmtstr("type_%i", typevarid++);
+  compiler_define_variable_ptr(c,varname,&type_def_ptr_def, t);
   value->type = C_INLINE_VALUE;
   value->raw.value = "NULL";
   value->raw.type = &type_def_ptr_def;
-  return &type_def_ptr_def;
+  return _compile_expr(c, block, value, symbol_expr(varname));;
 }
 
-static type_def * _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e );
+
 static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * value, sub_expr * se){
   UNUSED(value);
   if(se->sub_expr_count == 0)
@@ -213,19 +230,24 @@ compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
   return NULL;
 }
 
-void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t, void * data){
+void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t, void * ptr){
   var_def vdef;
   vdef.name = name;
   vdef.type = t;
-  vdef.data = data;
+  vdef.data = ptr;
   list_add((void **)&c->vars, &c->var_cnt, &vdef, sizeof(var_def));
+}
+
+type_def * str2type(char * str){
+  expr e = lisp_parse1(str);
+  return _type_macro(e);
 }
 
 type_def * _type_macro(expr typexpr);
 bool test_lisp2c(){
   //type_def fcn_def =
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
-  test_code = "(type i64)";
+  test_code = "(print_type (type i64))";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
@@ -239,6 +261,16 @@ bool test_lisp2c(){
 	  cast_def.fcn = &type_macro;
 	  cast_def.name = "type";
 	  compiler_define_variable_ptr(c, "type", &cmacro_def_def, &cast_def);
+	}
+	{
+	  //static fcn_def printtype_def;
+	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
+	  logd("TYPE: %i\n", type);
+	  decl fdcl;
+	  fdcl.name = "anon";
+	  fdcl.type = type;
+	  print_cdecl(fdcl);
+	  logd("\n*******\n");
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);

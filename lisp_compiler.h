@@ -43,6 +43,8 @@ typedef struct{
 }cmacro_def;
 
 void * compiler_define_variable(compiler_state *c, char * name, type_def * t);
+// defines a variable pointer.
+void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t, void * ptr);
 void compiler_reg_type(compiler_state *c, char * name, type_def * t);
 void compiler_load_types(compiler_state *);
 

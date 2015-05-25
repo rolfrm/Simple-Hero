@@ -26,14 +26,17 @@ void with_symbols(var_def ** vars, size_t * vars_cnt, void (*fcn)()){
 }
 
 var_def * get_variable(char * name, size_t name_len){
+  if(name_len > 1024)
+    ERROR("Excessive variable name length");
   symbol_stack * ss = symbolstack;
   var_def * vars = *ss->vars;
   size_t varcnt = *ss->vars_cnt;
   while(ss != NULL){
     for(size_t i = 0;i < varcnt; i++){
-      for(size_t j = 0; j < name_len; j++)
+      for(size_t j = 0; j < name_len; j++){
 	if(name[j] != vars[i].name[j])
 	  goto next_item;
+      }
       return vars + i;
     next_item:
       continue;

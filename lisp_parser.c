@@ -232,13 +232,25 @@ expr * lisp_parse_all(char * code, size_t * out_cnt){
   expr expr;
   char * next = code;
   while(next != NULL && *next != 0){
-    size_t cnt = 1;
+    int cnt = 1;
     next = lisp_parse(next, &expr, &cnt);
     if(cnt == 0 || next == NULL)
       break;
     list_add((void **) &exprs, out_cnt, &expr, sizeof(expr));
   }
   return exprs;
+}
+
+expr lisp_parse1(char * code){
+  int out_cnt = 1;
+  expr expr;
+  char * next = code;
+  next = lisp_parse(next, &expr, &out_cnt);
+  if(out_cnt == 0 || next == NULL){
+    ERROR("Unable to parse '%s'", code);
+  }
+  return expr;
+  
 }
 
 static bool test_infinite_bug(){

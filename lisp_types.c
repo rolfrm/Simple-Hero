@@ -117,7 +117,7 @@ void print_def(type_def * type, bool is_decl){
     break;
   case FUNCTION:
     // this is an error.
-    //print_cdecl((decl){"anon", type});
+    print_cdecl((decl){"_", type});
     break;
   default:
     ERROR("not implemented %i", type->kind);
@@ -292,14 +292,14 @@ type_def * _get_type_def(type_def * def){
 
   type_item * item = NULL;
   HASH_FIND_STR(items, tmpbuf, item);
-  logd("got typedef: '%s' %i\n",tmpbuf, item);
   if(item != NULL){
+    logd("got typedef: '%s' %i\n",tmpbuf, item->ptr);
     free(tmpbuf);
     return item->ptr;
   }
   item = alloc(sizeof(type_item));
   item->ptr = alloc(sizeof(type_def));
-
+  logd("got typedef: '%s' %i\n",tmpbuf, item->ptr);
   type_def * newtype = item->ptr;
   type_def * inner;
   newtype->kind = def->kind;
@@ -332,7 +332,6 @@ type_def * _get_type_def(type_def * def){
   return NULL;
 }
 
-
 type_def * get_type_def(type_def def){
   type_def * result = _get_type_def(&def);
   if(result == NULL)
@@ -358,10 +357,12 @@ void register_type(type_def * ptr, char * name){
     fclose(str);
     name = tmpbuf;
   }
+  if(strlen(name) == 0)
+    ERROR("type name cannot be empty");
   type_item * newitem = alloc(sizeof(type_item));
   newitem->ptr = ptr;
   newitem->name = name;
-  logd("Register: '%s'\n", name);
+  logd("Register: '%s' %i\n", name, ptr);
   HASH_ADD_STR(items, name, newitem);
 }
 
