@@ -52,6 +52,7 @@ bool fcn_def_cmp(fcn_def a, fcn_def b);
 comp_state comp_state_make();
 compiler_state * compiler_make();
 var_def * get_variable(char * name, size_t name_len);
+var_def * get_variable2(char * name);
 fcn_def * get_fcn_def(char * name, size_t name_len);
 cmacro_def * get_cmacro_def(char * name, size_t name_len);
 compiled_expr compile_expr(expr * e);

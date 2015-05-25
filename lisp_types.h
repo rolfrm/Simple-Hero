@@ -93,7 +93,8 @@ typedef enum{
   C_FUNCTION_CALL,
   C_OPERATOR,
   C_DEREF,
-  C_SYMBOL
+  C_SYMBOL,
+  C_CAST
 }c_value_kind;
 
 struct _c_value;
@@ -106,7 +107,7 @@ typedef struct{
 
 typedef struct{
   type_def * type;
-  c_expr * sub_expr;
+  c_value * value;
 }c_cast;
 
 typedef struct{
@@ -124,6 +125,7 @@ typedef struct{
   char * name;
   c_value * args;
   size_t arg_cnt;
+  type_def * type;
 }c_function_call;
 
 struct _c_value{
@@ -180,6 +182,9 @@ void register_type(type_def * type, char * name);
 // writes the dependencies of a type in defs
 // descending order, so least dependent comes first.
 void make_dependency_graph(type_def ** deps, type_def * def);
+void block_dep(type_def ** deps, c_block blk);
+void c_root_code_dep(type_def ** deps, c_root_code code);
+void get_var_dependencies(char ** type_names, c_root_code * code);
 void print_def(type_def * type, bool is_decl);
 
 void print_c_code(c_root_code code);

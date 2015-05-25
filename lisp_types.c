@@ -11,7 +11,8 @@
 #include <iron/mem.h>
 #include "lisp_types.h"
 #include "lisp_std_types.h"
-
+#include "lisp_parser.h"
+#include "lisp_compiler.h"
 /*bool type_def_cmp(type_def a, type_def b){
   if(a.kind != b.kind)
     return false;
@@ -125,9 +126,7 @@ void print_def(type_def * type, bool is_decl){
 }
 
 void make_dependency_graph(type_def ** defs, type_def * def){
-	  
-  if(&void_def == def) return;
-   
+  
   switch(def->kind){
   case UNION:
     for(i64 i = 0; i < def->cunion.cnt; i++){
@@ -162,11 +161,93 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     break;
   }
 	  
-  while(&void_def != *defs){
+  while(*defs != NULL){
     if(def == *defs) return;
     defs++;
   }
   *defs = def;
+}
+
+void value_dep(type_def ** deps, c_value val){
+  var_def * var;
+  switch(val.type){
+
+  case C_INLINE_VALUE:
+    make_dependency_graph(deps, val.raw.type);
+    break;
+  case C_FUNCTION_CALL:
+    make_dependency_graph(deps, val.call.type);
+    // todo: add variable dependency
+    break;
+  case C_OPERATOR:
+    value_dep(deps,*val.operator.left);
+    value_dep(deps,*val.operator.right);
+    break;
+  case C_SUB_EXPR:
+  case C_DEREF:
+    value_dep(deps,*val.value);
+    break;
+  case C_SYMBOL:
+    // todo: add variable dependency
+    var = get_variable2(val.symbol);
+    if(var == NULL)
+      ERROR("Unable to lookup symbol '%s'",val.symbol);
+    make_dependency_graph(deps, var->type);
+    break;
+  case C_CAST:
+    make_dependency_graph(deps, val.cast.type);
+    value_dep(deps, *val.cast.value);
+  }
+}
+
+void expr_dep(type_def ** deps, c_expr expr){
+  switch(expr.type){
+  case C_VAR:
+    make_dependency_graph(deps, expr.var.var.type);
+    if(expr.var.value != NULL){
+      value_dep(deps,* expr.var.value);
+    }
+    break;
+  case C_VALUE:
+  case C_RETURN:
+    value_dep(deps, expr.value);
+    break;
+  case C_BLOCK:
+    block_dep(deps,expr.block);
+    break;
+  }
+}
+
+void block_dep(type_def ** deps, c_block blk){
+  for(size_t i = 0; i < blk.expr_cnt; i++){
+    expr_dep(deps, blk.exprs[i]);
+  }
+}
+
+void c_root_code_dep(type_def ** deps, c_root_code code){
+  switch(code.type){
+  case C_FUNCTION_DEF:
+    make_dependency_graph(deps, code.fundef.fdecl.type);
+    block_dep(deps,code.fundef.block);
+    break;
+  case C_VAR_DEF:
+    make_dependency_graph(deps, code.var.var.type);
+    if(code.var.value != NULL)
+      value_dep(deps, *code.var.value);
+    break;
+  case C_DECL:
+    make_dependency_graph(deps, code.decl.type);
+    break;
+  case C_TYPE_DEF:
+    make_dependency_graph(deps, code.type_def);
+  default:
+    break;
+  }
+}
+
+void get_var_dependencies(char ** type_names, c_root_code * code){
+  UNUSED(type_names);
+  UNUSED(code);
 }
 
 void print_value(c_value val){
@@ -199,6 +280,11 @@ void print_value(c_value val){
   case C_SYMBOL:
     format("%s", val.symbol);
     break;
+  case C_CAST:
+    format("((");
+    print_def(val.cast.type, true);
+    format(")");
+    print_value(*val.cast.value);
   }
 }
 
@@ -212,7 +298,7 @@ void print_c_var(c_var var){
     format(";\n");
     }
 
-static void print_expr(c_expr expr){
+static void print_expr2(c_expr expr){
   switch(expr.type){
   case C_VAR:
     print_c_var(expr.var);
@@ -227,7 +313,7 @@ static void print_expr(c_expr expr){
   case C_BLOCK:
     format("{\n");
     for(size_t i = 0; i < expr.block.expr_cnt; i++){
-      print_expr(expr.block.exprs[i]);
+      print_expr2(expr.block.exprs[i]);
     }
     format("}\n");
   }
@@ -237,7 +323,7 @@ void print_block(c_block blk){
   format("{\n");
   for(size_t i = 0; i < blk.expr_cnt; i++){
     logd("//printing expr..\n");
-    print_expr(blk.exprs[i]);
+    print_expr2(blk.exprs[i]);
   }
   format("}\n");
 }

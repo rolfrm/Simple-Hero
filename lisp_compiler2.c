@@ -6,7 +6,6 @@
 #include "lisp_std_types.h"
 #include "lisp_compiler.h"
 	
-
 typedef struct{
   c_root_code * c_code;
   size_t code_cnt;
@@ -158,11 +157,11 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value, expr,expr,expr)) macro->fcn)(c,block,value,args[0],args[1],args[2]);
     }
   }else if(fvar->type->kind == FUNCTION){
-    logd("*** function ***\n");
     type_def * td = fvar->type;
     COMPILE_ASSERT(td->fcn.cnt == argcnt);
     
     c_function_call call;
+    call.type = td;
     call.name = fvar->name;
     c_value fargs[argcnt];
     type_def * farg_types[argcnt];
@@ -263,8 +262,7 @@ void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t,
 }
 
 type_def * str2type(char * str){
-  expr e = lisp_parse1(str);
-  return _type_macro(e);
+  return _type_macro(lisp_parse1(str));
 }
 
 void print_type(type_def * def){
@@ -293,7 +291,11 @@ bool test_lisp2c(){
 	{
 	  //static fcn_def printtype_def;
 	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
+	  type_def * type2 = str2type("(fcn void (a (ptr type_def)))");
+	  type_def * type3 = str2type("(fcn void (a (ptr void)))");
 	  compiler_define_variable_ptr(c, "print_type", type, print_type);
+	  if(type != type2 && type != type3)
+	    ERROR("types does not match");
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);
