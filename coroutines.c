@@ -193,9 +193,9 @@ static void * run_dispatcher(void * _attr){
 }
 
 void ccthread(ccdispatch * dis, void (*fcn) (void *), void * userdata){
-  int nidx = dis->stks_count;
-  int ncnt = dis->stks_count + 1;
-  for(int i = 0; i < dis->stks_count;i++){
+  size_t nidx = dis->stks_count;
+  size_t ncnt = dis->stks_count + 1;
+  for(size_t i = 0; i < dis->stks_count;i++){
     if(dis->loadfcn[i] == NULL){
       printf("reuse..\n");
       nidx = i;

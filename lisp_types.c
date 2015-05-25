@@ -13,35 +13,6 @@
 #include "lisp_std_types.h"
 #include "lisp_parser.h"
 #include "lisp_compiler.h"
-/*bool type_def_cmp(type_def a, type_def b){
-  if(a.kind != b.kind)
-    return false;
-  switch(a.kind){
-  case ENUM:
-    return a.cenum.enum_name == b.cenum.enum_name;
-  case SIMPLE:
-    return a.simple.name == b.simple.name;
-  case FUNCTION:
-    return 
-      a.fcn.args == b.fcn.args
-      && a.fcn.ret == b.fcn.ret;
-  case STRUCT:
-    return 
-      a.cstruct.name == b.cstruct.name &&
-      a.cstruct.members == b.cstruct.members;
-  case UNION:
-    return 
-      a.cunion.name == b.cunion.name &&
-      a.cunion.members == b.cunion.members;
-  case POINTER:
-    return a.ptr.inner == b.ptr.inner;
-  case TYPEDEF:
-    return a.ctypedef.inner == b.ctypedef.inner;
-  }
-  ERROR("Should not happen!\n");
-  return false;
-  }*/
-
 type_def make_simple(char * name, char * cname){
   static type_def def;
   def.kind = SIMPLE;
@@ -266,6 +237,7 @@ void print_value(c_value val){
     format("%s(", val.call.name);
     for(size_t i = 0; i < val.call.arg_cnt; i++){
       print_value(val.call.args[i]);
+
       if(i != val.call.arg_cnt -1){
 	format(", ");
       }
@@ -306,7 +278,6 @@ static void print_expr2(c_expr expr){
   case C_RETURN:
     format("return ");
   case C_VALUE:
-    logd("print value..\n");
     print_value(expr.value);
     format(";\n");
     break;
@@ -322,7 +293,6 @@ static void print_expr2(c_expr expr){
 void print_block(c_block blk){
   format("{\n");
   for(size_t i = 0; i < blk.expr_cnt; i++){
-    logd("//printing expr..\n");
     print_expr2(blk.exprs[i]);
   }
   format("}\n");
@@ -342,6 +312,7 @@ void print_c_code(c_root_code code){
     format("#include <%s>\n",code.include);
     break;
   case C_FUNCTION_DEF:
+
     print_fcn_code(code.fundef);
     break;
   case C_VAR_DEF:
@@ -380,13 +351,12 @@ type_def * _get_type_def(type_def * def){
   type_item * item = NULL;
   HASH_FIND_STR(items, tmpbuf, item);
   if(item != NULL){
-    logd("got typedef: '%s' %i\n",tmpbuf, item->ptr);
+
     free(tmpbuf);
     return item->ptr;
   }
   item = alloc(sizeof(type_item));
   item->ptr = alloc(sizeof(type_def));
-  logd("got typedef: '%s' %i\n",tmpbuf, item->ptr);
   type_def * newtype = item->ptr;
   type_def * inner;
   newtype->kind = def->kind;

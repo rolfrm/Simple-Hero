@@ -111,11 +111,8 @@ expr symbol_expr(char * name){
 static type_def * _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e );
 
 type_def * type_macro(compiler_state * c, c_block * block, c_value * value, expr e){
-  static int typevarid = 0;
-  UNUSED(c);
   UNUSED(block);
-  //UNUSED(value);
-  UNUSED(e);
+  static int typevarid = 0;
   type_def * t =_type_macro(e);
   char * varname = fmtstr("type_%i", typevarid++);
   compiler_define_variable_ptr(c,varname,&type_def_ptr_def, t);
@@ -124,7 +121,6 @@ type_def * type_macro(compiler_state * c, c_block * block, c_value * value, expr
   value->raw.type = &type_def_ptr_def;
   return _compile_expr(c, block, value, symbol_expr(varname));
 }
-
 
 static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * value, sub_expr * se){
   UNUSED(value);
@@ -142,10 +138,10 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
   if(fvar == NULL) ERROR("unknown symbol '%s'", name);
   if(fvar->type == &cmacro_def_def){
     cmacro_def * macro = fvar->data;
-    logd("C MACRO '%s'\n",macro->name);
+
     if(macro->arg_cnt != argcnt)
       ERROR("Unsupported number of arguments %i for %s",argcnt, macro->name);
-    
+
     switch(macro->arg_cnt){
     case 0:
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value)) macro->fcn)(c,block,value);
@@ -159,7 +155,7 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
   }else if(fvar->type->kind == FUNCTION){
     type_def * td = fvar->type;
     COMPILE_ASSERT(td->fcn.cnt == argcnt);
-    
+
     c_function_call call;
     call.type = td;
     call.name = fvar->name;
@@ -180,12 +176,12 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
     call.args = clone(fargs,sizeof(fargs));
     value->type = C_FUNCTION_CALL;
     value->call = call;
-    logd("*** function end ***\n");
+    value->call.arg_cnt = argcnt;
+    format("hello\n");
     return td->fcn.ret;
   }else{
     logd("Not supported..\n");
   }
-  logd("Found variable");
   type_def * sub_types[se->sub_expr_count];
   UNUSED(sub_types);
   c_value val[se->sub_expr_count];
@@ -228,7 +224,7 @@ compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
     c_value val;
     type_def * t = _compile_expr(c, &blk, &val, exp[i]);
 
-    logd("gets here..\n");
+
     print_def(t, false);
     c_expr expr;
     expr.type = C_VALUE;
@@ -249,6 +245,7 @@ compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
   c_root_code root_code;
   root_code.type = C_FUNCTION_DEF;  
   root_code.fundef = fundef;
+
   print_c_code(root_code);
   return NULL;
 }
