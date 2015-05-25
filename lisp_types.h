@@ -173,6 +173,7 @@ void print_cdecl(decl idecl);
 type_def make_simple(char * name, char * cname);
 type_def make_ptr(type_def * def);
 type_def * get_type_def(type_def def);
+type_def * get_type_from_string(char * name);
 void register_type(type_def * type, char * name);
 
 // simple function to calculate type dependencies.

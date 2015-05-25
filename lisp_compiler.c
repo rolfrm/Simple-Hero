@@ -6,23 +6,24 @@
 #include "lisp_compiler.h"
 #include "lisp_std_types.h"
 
-static __thread comp_state * compstate = NULL;
+//static __thread comp_state * compstate = NULL;
 static __thread compiler_state * lisp_state = NULL;
 
 void with_compiler(compiler_state * c, void (* fcn)()){
   compiler_state * old = lisp_state;
   lisp_state = c;
-  fcn();
+  with_symbols(&c->vars,&c->var_cnt,fcn);
   lisp_state = old;
-}
-
-bool fcn_def_cmp(fcn_def a, fcn_def b){
-  return a.type == b.type
-    && strcmp(a.name,b.name) == 0;
 }
 
 compiler_state * compiler_make(){
   return alloc0(sizeof(compiler_state));
+}
+
+/*
+ fcn_def_cmp(fcn_def a, fcn_def b){
+  return a.type == b.type
+    && strcmp(a.name,b.name) == 0;
 }
 
 void tccerror(void * opaque, const char * msg){
@@ -551,14 +552,7 @@ type_def defun_macro(expr name, expr typexpr, expr body){
   fclose(str);
   print_def(ret_type,0,false);
   format(" %.*s(",name.value.strln,name.value.value);
-  /*for(int i = 0; i > fcn_var_cnt; i++){
-    char name
-    decl dcl;
-    
-    print_cdecl(dcl);
-    if(i != fcn_var_cnt - 1)
-      format(",");
-      }*/
+
   logd("Str: %s\n",tmpbuf);
   
 
@@ -809,7 +803,6 @@ void compiler_load_types(compiler_state * c){
     compiler_reg_type(c,name,def);
   }
   r("i64_def",&i64_def);
-  
 }
 
 void print_string(char * string){
@@ -1103,7 +1096,7 @@ void eval_print(compiled_expr cexpr){
   }
 }
 
-/*bool start_read_eval_print_loop(){
+bool start_read_eval_print_loop(){
   format("C-LISP REPL\n");
 
   char * expr_reader = NULL;
@@ -1156,7 +1149,7 @@ void eval_print(compiled_expr cexpr){
     cnt = 0;
   } 
   return true;
-  }*/
+  }
 
 void * tccs_compile_and_get(TCCState * tccs, char * code, char * symbol){
   format("Compiling %s\n", code);
@@ -1194,3 +1187,4 @@ bool tccs_test2(){
   tcc_delete(tccs);
   return TEST_SUCCESS;
 }
+*/

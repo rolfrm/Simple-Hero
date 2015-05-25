@@ -8,13 +8,13 @@
 
 typedef struct _symbol_stack symbol_stack;
 struct _symbol_stack{
-  var_def * vars;
-  size_t vars_cnt;
+  var_def ** vars;
+  size_t *vars_cnt;
   symbol_stack * tail;
 };
 __thread symbol_stack * symbolstack = NULL;
 
-void with_symbols(var_def * vars, size_t vars_cnt, void (*fcn)()){
+void with_symbols(var_def ** vars, size_t * vars_cnt, void (*fcn)()){
   symbol_stack nss;
   nss.vars = vars;
   nss.vars_cnt = vars_cnt;
@@ -27,12 +27,14 @@ void with_symbols(var_def * vars, size_t vars_cnt, void (*fcn)()){
 
 var_def * get_variable(char * name, size_t name_len){
   symbol_stack * ss = symbolstack;
+  var_def * vars = *ss->vars;
+  size_t varcnt = *ss->vars_cnt;
   while(ss != NULL){
-    for(size_t i = 0;i < ss->vars_cnt; i++){
+    for(size_t i = 0;i < varcnt; i++){
       for(size_t j = 0; j < name_len; j++)
-	if(name[j] != ss->vars[i].name[j])
+	if(name[j] != vars[i].name[j])
 	  goto next_item;
-      return ss->vars + i;
+      return vars + i;
     next_item:
       continue;
     }
@@ -79,7 +81,7 @@ fcn_def * get_fcn_def(char * name, size_t name_len){
     return NULL;
   }
   
-  if(false == var->type == &fcn_def_def){
+  if(var->type != &fcn_def_def){
     return NULL;
   }
   return (fcn_def *) var->data;

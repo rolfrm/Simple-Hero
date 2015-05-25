@@ -57,4 +57,8 @@ type_def compile_iexpr(expr expr1);
 void compiler_set_state(compiler_state * ls);
 void write_dependencies(type_def * deps);
 void with_compiler(compiler_state * c, void (* fcn)());
+
+// symbols
+void with_symbols(var_def ** vars, size_t * vars_cnt, void (*fcn)());
+
 bool test_lisp2c();

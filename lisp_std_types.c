@@ -44,7 +44,7 @@ void load_defs(){
   decl_ptr_def.kind = POINTER;
   decl_ptr_def.ptr.inner = &decl_def;
   
-  { // kind enum
+  { // kind enumx
     static type_def type_def_kind_def_inner;
     type_def_kind_def.kind = TYPEDEF;
     type_def_kind_def.ctypedef.inner = &type_def_kind_def_inner;
@@ -55,6 +55,7 @@ void load_defs(){
     type_def_kind_def_inner.cenum.cnt = array_count(kindnames);
     type_def_kind_def_inner.cenum.names = kindnames;
     type_def_kind_def_inner.cenum.values = kindvalues;
+    r2(&type_def_kind_def);
   }
     
   { //type_def struct members:
@@ -223,6 +224,7 @@ void load_defs(){
     members[2].type = &u8_def;
     members[3].name = "ptr";
     members[3].type = &void_ptr_def;
+    r2(&fcn_def_def);
   }
   { // cmacrodef_def
     cmacro_def_def.kind = TYPEDEF;
@@ -240,6 +242,7 @@ void load_defs(){
     members[1].type = &i64_def;
     members[2].name = "fcn";
     members[2].type = &void_ptr_def;
+    r2(&cmacro_def_def);
   }
 }
 

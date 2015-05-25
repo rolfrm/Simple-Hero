@@ -60,31 +60,31 @@ void print_def(type_def * type, bool is_decl){
   type_def * inner;
   switch(type->kind){
   case SIMPLE:
-    format("%s ", type->simple.name);
+    format("%s", type->simple.name);
     break;
   case STRUCT:
     if(is_decl){
-      format("%s ", type->cstruct.name);
+      format("%s", type->cstruct.name);
     }else{
       format("struct %s{\n", type->cstruct.name == NULL ? "" : type->cstruct.name);
       
       for(i64 i = 0; i < type->cstruct.cnt; i++){
 	print_def(type->cstruct.members[i].type, true);
 	if(type->cstruct.members[i].name != NULL)
-	  format("%s;\n",type->cstruct.members[i].name);
+	  format(" %s;\n",type->cstruct.members[i].name);
       }
       format("}"); 
     }
     break;
   case POINTER:
     print_def(type->ptr.inner, true);
-    format("* ");
+    format(" *");
     break;
   case ENUM:
     if(is_decl){
-      format("%s ", type->cenum.enum_name);
+      format("%s", type->cenum.enum_name);
     }else{
-      format("%s ",type->cenum.enum_name);
+      format("%s",type->cenum.enum_name);
     }
     break;
   case UNION:
@@ -106,7 +106,7 @@ void print_def(type_def * type, bool is_decl){
       inner->cstruct.name = struct_name;
     }
     if(is_decl){
-      format("%s ", type->ctypedef.name);
+      format("%s", type->ctypedef.name);
       //print_def(inner,ind,true);
     }else{
       format("typedef ");
@@ -219,6 +219,7 @@ static void print_expr(c_expr expr){
   case C_RETURN:
     format("return ");
   case C_VALUE:
+    logd("print value..\n");
     print_value(expr.value);
     format(";\n");
     break;
@@ -234,6 +235,7 @@ static void print_expr(c_expr expr){
 void print_block(c_block blk){
   format("{\n");
   for(size_t i = 0; i < blk.expr_cnt; i++){
+    logd("//printing expr..\n");
     print_expr(blk.exprs[i]);
   }
   format("}\n");
@@ -277,17 +279,73 @@ typedef struct{
 }type_item;
 static type_item * items = NULL;
 
-type_def * get_type_def(type_def def){
+type_def * _get_type_def(type_def * def){
+
+  if(def->kind == STRUCT)
+    return def;
 
   char * tmpbuf = NULL;
   size_t tmpbuf_size = 0;
   FILE * str = open_memstream(&tmpbuf,&tmpbuf_size);
-  with_format_out(str, lambda(void, (){print_def(&def, true);}));
+  with_format_out(str, lambda(void, (){print_def(def, true);}));
   fclose(str);
 
   type_item * item = NULL;
   HASH_FIND_STR(items, tmpbuf, item);
   logd("got typedef: '%s' %i\n",tmpbuf, item);
+  if(item != NULL){
+    free(tmpbuf);
+    return item->ptr;
+  }
+  item = alloc(sizeof(type_item));
+  item->ptr = alloc(sizeof(type_def));
+
+  type_def * newtype = item->ptr;
+  type_def * inner;
+  newtype->kind = def->kind;
+  switch(def->kind){
+  case TYPEDEF:
+    inner = _get_type_def(def->ctypedef.inner);
+    newtype->ctypedef.inner = inner;
+    newtype->ctypedef.name = def->ctypedef.name;
+    register_type(newtype, NULL);
+    return newtype;
+  case POINTER:
+    inner = _get_type_def(def->ptr.inner);
+    newtype->ptr.inner = inner;
+    register_type(newtype, NULL);
+    return newtype;
+  case FUNCTION:
+    newtype->fcn.cnt = def->fcn.cnt;
+    newtype->fcn.ret = _get_type_def(def->fcn.ret);
+    newtype->fcn.args = alloc(sizeof(decl) * def->fcn.cnt);
+    for(i64 i = 0; i < newtype->fcn.cnt; i++){
+      newtype->fcn.args[i].name = def->fcn.args[i].name;
+      newtype->fcn.args[i].type = _get_type_def(def->fcn.args[i].type);
+    }
+    register_type(newtype, NULL);
+    return newtype;
+  default:
+    print_def(def,true);
+    ERROR("Cannot get type %i", def->kind);
+  }
+  return NULL;
+}
+
+
+type_def * get_type_def(type_def def){
+  type_def * result = _get_type_def(&def);
+  if(result == NULL)
+    ERROR("Unable to resolve type");
+  return result;
+}
+
+type_def * get_type_from_string(char * str){
+  logd("fetch type '%s'",str);
+  type_item * item = NULL;
+  HASH_FIND_STR(items, str, item);
+  if(item != NULL)
+    return item->ptr;
   return NULL;
 }
 
@@ -299,13 +357,46 @@ void register_type(type_def * ptr, char * name){
     with_format_out(str, lambda(void, (){print_def(ptr, true);}));
     fclose(str);
     name = tmpbuf;
-    logd("tmpbuf: '%s'\n",tmpbuf);
   }
   type_item * newitem = alloc(sizeof(type_item));
   newitem->ptr = ptr;
   newitem->name = name;
   logd("Register: '%s'\n", name);
   HASH_ADD_STR(items, name, newitem);
+}
+
+
+void print_cdecl(decl idecl){
+  void inner_print(decl idecl){
+    
+    type_def * def = idecl.type;
+    switch(def->kind){
+    case TYPEDEF:
+    case STRUCT:
+    case SIMPLE:
+    case POINTER:
+      print_def(def,true);
+      format(" %s",idecl.name);
+      break;
+    case FUNCTION:
+      
+      print_def(def->fcn.ret,true);
+      format(" %s( ",idecl.name);
+      for(i64 i = 0; i < def->fcn.cnt; i++){
+	inner_print(def->fcn.args[i]);
+	if(i + 1 != def->fcn.cnt)
+	  format(", ");
+      }
+      format(")");
+      break;
+    default:
+      ERROR("Not supported: '%i'\n", def->kind);
+    }
+  }
+
+  inner_print(idecl);
+  format(" ");
+  //format(";\n");
 }
 
 
@@ -389,37 +480,4 @@ bool test_print_c_code(){
   }
 
   return TEST_SUCCESS;
-}
-
-void print_cdecl(decl idecl){
-  void inner_print(decl idecl){
-    
-    type_def * def = idecl.type;
-    switch(def->kind){
-    case TYPEDEF:
-    case STRUCT:
-    case SIMPLE:
-    case POINTER:
-      print_def(def,true);
-      format("%s",idecl.name);
-      break;
-    case FUNCTION:
-      
-      print_def(def->fcn.ret,true);
-      format("%s( ",idecl.name);
-      for(i64 i = 0; i < def->fcn.cnt; i++){
-	inner_print(def->fcn.args[i]);
-	if(i + 1 != def->fcn.cnt)
-	  format(", ");
-      }
-      format(")");
-      break;
-    default:
-      ERROR("Not supported: '%i'\n", def->kind);
-    }
-  }
-
-  inner_print(idecl);
-  format(" ");
-  //format(";\n");
 }
