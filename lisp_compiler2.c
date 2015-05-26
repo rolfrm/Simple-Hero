@@ -142,7 +142,7 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
     if(macro->arg_cnt != argcnt)
       ERROR("Unsupported number of arguments %i for %s",argcnt, macro->name);
 
-    switch(macro->arg_cnt){
+    switch(argcnt){
     case 0:
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value)) macro->fcn)(c,block,value);
     case 1:
@@ -151,6 +151,8 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value,expr,expr)) macro->fcn)(c,block,value,args[0],args[1]);
     case 3:
       return ((type_def *(*)(compiler_state * c, c_block * block, c_value * value, expr,expr,expr)) macro->fcn)(c,block,value,args[0],args[1],args[2]);
+    default:
+      ERROR("Number of macro arguments not supported: %i", argcnt);
     }
   }else if(fvar->type->kind == FUNCTION){
     type_def * td = fvar->type;
@@ -195,27 +197,18 @@ static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * 
 	  
 static type_def * _compile_expr(compiler_state * c, c_block * block, c_value * val,  expr e ){
   type_def * td;
-  c_expr * exprs;  
-  size_t expr_cnt;
   switch(e.type){
   case EXPR:
     return __compile_expr(c, block, val, &e.sub_expr);
     break;
   case VALUE:
     td = compile_value(c,val,e.value);
-    expr_cnt = 1;
-    exprs = alloc(sizeof(c_expr));
-    exprs->type = C_VALUE;
-    exprs->value =*val;
     break;
-  }
-  block->exprs = exprs;
-  block->expr_cnt = expr_cnt;
-	  
+  }	  
   return td;
 }
 
-compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
+compiled_lisp compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
   c_block blk;
   blk.expr_cnt = 0;
   blk.exprs = NULL; 
@@ -223,8 +216,6 @@ compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
   for(size_t i = 0; i < cnt; i++){
     c_value val;
     type_def * t = _compile_expr(c, &blk, &val, exp[i]);
-
-
     print_def(t, false);
     c_expr expr;
     expr.type = C_VALUE;
@@ -245,9 +236,10 @@ compiled_lisp * compile_lisp_to_c(compiler_state * c, expr * exp, size_t cnt){
   c_root_code root_code;
   root_code.type = C_FUNCTION_DEF;  
   root_code.fundef = fundef;
-
-  print_c_code(root_code);
-  return NULL;
+  compiled_lisp code;
+  code.code_cnt = 1;
+  code.c_code = clone(&root_code, sizeof(c_root_code));  
+  return code;
 }
 
 void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t, void * ptr){
@@ -296,7 +288,20 @@ bool test_lisp2c(){
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);
-	compile_lisp_to_c(c, exprs, exprcnt);
+	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
+
+	type_def * deps[100];
+	memset(deps, 0, sizeof(deps));
+	for(size_t i = 0; i < cl.code_cnt; i++){
+	  c_root_code_dep(deps, cl.c_code[i]);
+	  print_c_code(cl.c_code[i]);
+	}
+	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
+	  logd("%i\n",deps[i]);
+	  print_def(deps[i],true);logd("\n");
+	}
+	logd("%i\n", str2type("type_def"));
+
 	};));
   return TEST_FAIL;
 }
