@@ -37,6 +37,7 @@ void load_defs(){
   char_ptr_ptr_def.ptr.inner = &char_ptr_def;
   i64_ptr_def.kind = POINTER;
   i64_ptr_def.ptr.inner = &i64_def;  
+  r2(&i64_ptr_def);
   type_def_def.kind = TYPEDEF;
   type_def_def.ctypedef.name = "type_def";
   type_def_ptr_def.kind = POINTER;
@@ -247,5 +248,8 @@ void load_defs(){
     r2(&cmacro_def_def);
   }
   r2(&type_def_ptr_def);
+  r2(&type_def_def);
+  r2(&decl_def);
+  r2(&decl_ptr_def);
 }
 

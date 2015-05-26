@@ -397,7 +397,7 @@ type_def * get_type_def(type_def def){
 }
 
 type_def * get_type_from_string(char * str){
-  logd("fetch type '%s'",str);
+  logd("fetch type '%s'\n",str);
   type_item * item = NULL;
   HASH_FIND_STR(items, str, item);
   if(item != NULL)
@@ -439,7 +439,7 @@ void print_cdecl(decl idecl){
     case FUNCTION:
       
       print_def(def->fcn.ret,true);
-      format(" %s( ",idecl.name);
+      format(" %s(",idecl.name);
       for(i64 i = 0; i < def->fcn.cnt; i++){
 	inner_print(def->fcn.args[i]);
 	if(i + 1 != def->fcn.cnt)
@@ -453,8 +453,6 @@ void print_cdecl(decl idecl){
   }
 
   inner_print(idecl);
-  format(" ");
-  //format(";\n");
 }
 
 
