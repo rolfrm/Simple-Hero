@@ -35,6 +35,7 @@ void load_defs(){
   char_ptr_def.ptr.inner = &char_def;
   char_ptr_ptr_def.kind = POINTER;
   char_ptr_ptr_def.ptr.inner = &char_ptr_def;
+  r2(&char_ptr_ptr_def);
   i64_ptr_def.kind = POINTER;
   i64_ptr_def.ptr.inner = &i64_def;  
   r2(&i64_ptr_def);
@@ -102,9 +103,9 @@ void load_defs(){
 
 	cenum_def.kind = STRUCT;
 	cenum_def.cstruct.members = members;
-	cenum_def.cstruct.name = NULL;
+	cenum_def.cstruct.name = "_enum";
 	cenum_def.cstruct.cnt = array_count(members);
-	
+	r2(&cenum_def);
 	umembers[0].type = get_type_def(cenum_def);
 	umembers[0].name = "cenum";
       }

@@ -296,9 +296,10 @@ bool test_lisp2c(){
 	  c_root_code_dep(deps, cl.c_code[i]);
 	  print_c_code(cl.c_code[i]);
 	}
+	
 	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-	  logd("%i\n",deps[i]);
-	  print_def(deps[i],true);logd("\n");
+	  logd(" -- %i  %i -- \n",deps[i], deps[i]->kind);
+	  //print_def(deps[i],true);logd("\n");
 	}
 	logd("%i\n", str2type("type_def"));
 

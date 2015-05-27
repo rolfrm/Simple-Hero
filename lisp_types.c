@@ -97,9 +97,16 @@ void print_def(type_def * type, bool is_decl){
 }
 
 void make_dependency_graph(type_def ** defs, type_def * def){
-  
+  logd("def kind: %i\n", def->kind);
+  type_def ** defs_it = defs;
+  for(; *defs_it != NULL; defs_it++){
+    if(*defs_it == def)
+      return;
+  }
+  *defs_it = def;
   switch(def->kind){
   case UNION:
+    logd("--33-- '%s' \n", def->cunion.name);
     for(i64 i = 0; i < def->cunion.cnt; i++){
       type_def * sdef = def->cunion.members[i].type;
       make_dependency_graph(defs,sdef);
@@ -115,9 +122,12 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     if(def->cstruct.name == NULL) return;
     break;
   case POINTER:
-    def = def->ptr.inner;
+    logd("--22-- \n");
+    //def = def->ptr.inner;
+    make_dependency_graph(defs,def->ptr.inner);
     break;
   case TYPEDEF:
+    log("found typedef");
     make_dependency_graph(defs,def->ctypedef.inner);
     break;
   case ENUM:
@@ -131,12 +141,7 @@ void make_dependency_graph(type_def ** defs, type_def * def){
   default:
     break;
   }
-	  
-  while(*defs != NULL){
-    if(def == *defs) return;
-    defs++;
-  }
-  *defs = def;
+	 
 }
 
 void value_dep(type_def ** deps, c_value val){
