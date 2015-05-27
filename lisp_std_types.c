@@ -108,6 +108,7 @@ void load_defs(){
 	r2(&cenum_def);
 	umembers[0].type = get_type_def(cenum_def);
 	umembers[0].name = "cenum";
+
       }
 
       {//simple
@@ -191,8 +192,11 @@ void load_defs(){
 	umembers[6].type = &ctypedef_def;
 	umembers[6].name = "ctypedef";
       }
+
     }
+    
   }
+  loge("members[1].type->cunion.members[0].type->kind: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
   {
     static decl members[2];
     static type_def dclinner;
@@ -252,5 +256,7 @@ void load_defs(){
   r2(&type_def_def);
   r2(&decl_def);
   r2(&decl_ptr_def);
+
+  
 }
 

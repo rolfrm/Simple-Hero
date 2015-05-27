@@ -109,6 +109,7 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     logd("--33-- '%s' \n", def->cunion.name);
     for(i64 i = 0; i < def->cunion.cnt; i++){
       type_def * sdef = def->cunion.members[i].type;
+      logd("--44-- '%i' \n", sdef->kind);
       make_dependency_graph(defs,sdef);
     }	  
     if(def->cunion.name == NULL) return;
@@ -138,7 +139,9 @@ void make_dependency_graph(type_def ** defs, type_def * def){
       make_dependency_graph(defs, def->fcn.args[i].type);
     break;
   case SIMPLE:
+    break;
   default:
+    ERROR("Unknown type: %i",def->kind);
     break;
   }
 	 
