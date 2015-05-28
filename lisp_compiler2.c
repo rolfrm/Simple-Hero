@@ -292,6 +292,7 @@ bool test_lisp2c(){
 
 	type_def * deps[100];
 	memset(deps, 0, sizeof(deps));
+	loge("members[1].type->cunion.members[0].type->kind: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
 	
 	for(size_t i = 0; i < cl.code_cnt; i++){
 	  c_root_code_dep(deps, cl.c_code[i]);

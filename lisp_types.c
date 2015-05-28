@@ -10,9 +10,10 @@
 #include <iron/fileio.h>
 #include <iron/mem.h>
 #include "lisp_types.h"
-#include "lisp_std_types.h"
 #include "lisp_parser.h"
 #include "lisp_compiler.h"
+#include "lisp_std_types.h"
+
 type_def make_simple(char * name, char * cname){
   static type_def def;
   def.kind = SIMPLE;
@@ -413,7 +414,12 @@ type_def * get_type_from_string(char * str){
   return NULL;
 }
 
+extern decl * umembers;
 void register_type(type_def * ptr, char * name){
+  if(ptr == &type_def_def){
+    //umembers[0].type->kind = STRUCT;
+    loge("::::::10: %i\n",umembers[0].type->kind);  
+  }
   if(name == NULL){
     char * tmpbuf = NULL;
     size_t tmpbuf_size = 0;
@@ -422,9 +428,12 @@ void register_type(type_def * ptr, char * name){
     fclose(str);
     name = tmpbuf;
   }
+
+  if(strcmp(name,"type_def") == 0)
+    loge("::::::4: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
   if(strlen(name) == 0)
     ERROR("type name cannot be empty");
-  type_item * newitem = alloc(sizeof(type_item));
+  type_item * newitem = alloc0(sizeof(type_item));
   newitem->ptr = ptr;
   newitem->name = name;
   logd("Register: '%s' %i\n", name, ptr);

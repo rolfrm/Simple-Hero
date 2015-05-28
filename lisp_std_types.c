@@ -3,21 +3,30 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../bitguy/bitguy.h"
-#include "../bitguy/utils.h"
+#include <iron/types.h>
+#include <iron/log.h>
+#include <iron/mem.h>
 #include "lisp_types.h"
 
 #include "lisp_std_types.h"
 
+ decl * umembers = NULL;
+
+static void r(type_def * def){
+    register_type(def, def->simple.name);
+}
+
+void r2(type_def * def){
+  if(def == &type_def_def){
+    loge("::::::9: %i\n",umembers[0].type->kind);  
+  }
+  register_type(def,NULL);
+}
+
 // Loads a all the types we need.
 // call before anything else.
 void load_defs(){
-  void r(type_def * def){
-    register_type(def, def->simple.name);
-  }
-  void r2(type_def * def){
-    register_type(def,NULL);
-  }
+  
   void_def = make_simple("void", "void");
   r(&void_def);
 
@@ -48,7 +57,7 @@ void load_defs(){
   decl_ptr_def.kind = POINTER;
   decl_ptr_def.ptr.inner = &decl_def;
   
-  { // kind enumx
+  { // kind enum
     static type_def type_def_kind_def_inner;
     type_def_kind_def.kind = TYPEDEF;
     type_def_kind_def.ctypedef.inner = &type_def_kind_def_inner;
@@ -71,7 +80,7 @@ void load_defs(){
     itype_def_def.cstruct.members = members;
     itype_def_def.cstruct.cnt = array_count(members);
     itype_def_def.cstruct.name = "_type_def";
-
+    
     members[0].type = get_type_def(type_def_kind_def);
     members[0].name = "kind";
     {
@@ -79,124 +88,124 @@ void load_defs(){
       type_def_union.kind = UNION;    
       type_def_union.cunion.name = NULL;
       members[1].type = &type_def_union;
-    }
-
-    members[1].name = NULL;
-
-    {// anon union members
-
-      static decl umembers[7];
-      members[1].type->cunion.cnt = array_count(umembers);
-      members[1].type->cunion.members = umembers;
-
-      {//cenum
-	static type_def cenum_def;
-	static decl members[4];
-	members[0].name = "names";
-	members[0].type = get_type_def(char_ptr_ptr_def);
-	members[1].name = "values";
-	members[1].type = get_type_def(i64_ptr_def);
-	members[2].name = "cnt";
-	members[2].type = get_type_def(i64_def);
-	members[3].name = "enum_name";
-	members[3].type = get_type_def(char_ptr_def);
-
-	cenum_def.kind = STRUCT;
-	cenum_def.cstruct.members = members;
-	cenum_def.cstruct.name = "_enum";
-	cenum_def.cstruct.cnt = array_count(members);
-	r2(&cenum_def);
-	umembers[0].type = get_type_def(cenum_def);
-	umembers[0].name = "cenum";
-
-      }
-
-      {//simple
-	static type_def simple_def;
-	static decl members[2];
-	simple_def.kind = STRUCT;
-	simple_def.cstruct.name=NULL;
-	simple_def.cstruct.members = members;
-	simple_def.cstruct.cnt = array_count(members);
-
-	members[0].name ="name";
-	members[0].type = get_type_def(char_ptr_def);
-	members[1].name = "cname";
-	members[1].type = get_type_def(char_ptr_def);
-	
-	umembers[1].type = get_type_def(simple_def);
-	umembers[1].name = "simple";
-      }
+      if(umembers == NULL) umembers = alloc0(sizeof(umembers) * 7);
+      type_def_union.cunion.cnt = 7;
+      type_def_union.cunion.members = umembers;
       
-      {//fcn
-	static type_def fcn_def;
-	static decl members[3];
-	fcn_def.kind = STRUCT;
-	fcn_def.cstruct.cnt = array_count(members);
-	fcn_def.cstruct.members = members;
-	fcn_def.cstruct.name = NULL;
-	members[0].name= "ret";
-	members[0].type = get_type_def(type_def_ptr_def);
-	members[1].name = "args";
-	members[1].type = get_type_def(type_def_ptr_def);
-	members[2].name = "cnt";
-	members[2].type = get_type_def(i64_def);
+      members[1].name = NULL;
+
+      {// anon union members
 	
-	umembers[2].type = get_type_def(fcn_def);
-	umembers[2].name = "fcn";
+	{//cenum
+	  static type_def cenum_def;
+	  static decl members[4];
+	  members[0].name = "names";
+	  members[0].type = get_type_def(char_ptr_ptr_def);
+	  members[1].name = "values";
+	  members[1].type = get_type_def(i64_ptr_def);
+	  members[2].name = "cnt";
+	  members[2].type = get_type_def(i64_def);
+	  members[3].name = "enum_name";
+	  members[3].type = get_type_def(char_ptr_def);
+	  
+	  cenum_def.kind = STRUCT;
+	  cenum_def.cstruct.members = members;
+	  cenum_def.cstruct.name = "_enum";
+	  cenum_def.cstruct.cnt = array_count(members);
+	  r2(&cenum_def);
+	  umembers[0].type = get_type_def(cenum_def);
+	  umembers[0].name = "cenum";
+	  umembers[0].type->kind = STRUCT;
+	}
+	
+	{//simple
+	  static type_def simple_def;
+	  static decl members[2];
+	  simple_def.kind = STRUCT;
+	  simple_def.cstruct.name=NULL;
+	  simple_def.cstruct.members = members;
+	  simple_def.cstruct.cnt = array_count(members);
+	  
+	  members[0].name ="name";
+	  members[0].type = get_type_def(char_ptr_def);
+	  members[1].name = "cname";
+	  members[1].type = get_type_def(char_ptr_def);
+	  
+	  umembers[1].type = get_type_def(simple_def);
+	  umembers[1].name = "simple";
+	}
+	
+	{//fcn
+	  static type_def fcn_def;
+	  static decl members[3];
+	  fcn_def.kind = STRUCT;
+	  fcn_def.cstruct.cnt = array_count(members);
+	  fcn_def.cstruct.members = members;
+	  fcn_def.cstruct.name = NULL;
+	  members[0].name= "ret";
+	  members[0].type = get_type_def(type_def_ptr_def);
+	  members[1].name = "args";
+	  members[1].type = get_type_def(type_def_ptr_def);
+	  members[2].name = "cnt";
+	  members[2].type = get_type_def(i64_def);
+	  
+	  umembers[2].type = get_type_def(fcn_def);
+	  umembers[2].name = "fcn";
+	}
+	
+	{//cstruct/cunion
+	  static decl members[3];
+	  members[0].name = "name";
+	  members[0].type = get_type_def(char_ptr_def);
+	  members[1].name = "members";
+	  members[1].type = &decl_ptr_def;
+	  members[2].name = "cnt";
+	  members[2].type = &i64_def;
+	  static type_def cstruct_def;
+	  cstruct_def.kind = STRUCT;
+	  cstruct_def.cstruct.name = NULL;
+	  cstruct_def.cstruct.members= members;
+	  cstruct_def.cstruct.cnt = array_count(members);
+	  umembers[3].type = get_type_def(cstruct_def);
+	  umembers[3].name = "cstruct";
+	  umembers[4].type = get_type_def(cstruct_def);
+	  //umembers[4].type.cstruct.name = NULL;
+	  umembers[4].name = "cunion";
+	}
+	
+	{//ptr
+	  static decl members[1];
+	  members[0].name = "inner";
+	  members[0].type = &type_def_ptr_def;
+	  static type_def ptr_def;
+	  ptr_def.kind = STRUCT;
+	  ptr_def.cstruct.members = members;
+	  ptr_def.cstruct.cnt = 1;
+	  ptr_def.cstruct.name = NULL;
+	  umembers[5].type = &ptr_def;
+	  umembers[5].name = "ptr";
+	}
+	{// typedef
+	  static decl members[2];
+	  members[0].name = "name";
+	  members[0].type = &char_ptr_def;
+	  members[1].name = "inner";
+	  members[1].type = &type_def_ptr_def;
+	  static type_def ctypedef_def;
+	  ctypedef_def.kind = STRUCT;
+	  ctypedef_def.cstruct.name = NULL;
+	  ctypedef_def.cstruct.members = members;
+	  ctypedef_def.cstruct.cnt = array_count(members);
+	  umembers[6].type = &ctypedef_def;
+	  umembers[6].name = "ctypedef";
+	}
+	
       }
-
-      {//cstruct/cunion
-	static decl members[3];
-	members[0].name = "name";
-	members[0].type = get_type_def(char_ptr_def);
-	members[1].name = "members";
-	members[1].type = &decl_ptr_def;
-	members[2].name = "cnt";
-	members[2].type = &i64_def;
-	static type_def cstruct_def;
-	cstruct_def.kind = STRUCT;
-	cstruct_def.cstruct.name = NULL;
-	cstruct_def.cstruct.members= members;
-	cstruct_def.cstruct.cnt = array_count(members);
-	umembers[3].type = get_type_def(cstruct_def);
-	umembers[3].name = "cstruct";
-	umembers[4].type = get_type_def(cstruct_def);
-	//umembers[4].type.cstruct.name = NULL;
-	umembers[4].name = "cunion";
-      }
-
-      {//ptr
-	static decl members[1];
-	members[0].name = "inner";
-	members[0].type = &type_def_ptr_def;
-	static type_def ptr_def;
-	ptr_def.kind = STRUCT;
-	ptr_def.cstruct.members = members;
-	ptr_def.cstruct.cnt = 1;
-	ptr_def.cstruct.name = NULL;
-	umembers[5].type = &ptr_def;
-	umembers[5].name = "ptr";
-      }
-      {// typedef
-	static decl members[2];
-	members[0].name = "name";
-	members[0].type = &char_ptr_def;
-	members[1].name = "inner";
-	members[1].type = &type_def_ptr_def;
-	static type_def ctypedef_def;
-	ctypedef_def.kind = STRUCT;
-	ctypedef_def.cstruct.name = NULL;
-	ctypedef_def.cstruct.members = members;
-	ctypedef_def.cstruct.cnt = array_count(members);
-	umembers[6].type = &ctypedef_def;
-	umembers[6].name = "ctypedef";
-      }
-
+      r2(&type_def_union);
+      
+      
     }
-    
   }
-  loge("members[1].type->cunion.members[0].type->kind: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
   {
     static decl members[2];
     static type_def dclinner;
@@ -214,6 +223,14 @@ void load_defs(){
     decl_def.ctypedef.name = "decl";
     decl_def.ctypedef.inner = &dclinner;
   }
+  loge("::::::3: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
+  r2(&type_def_def);
+  loge("::::::7: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
+  
+  r2(&decl_def);
+  r2(&type_def_ptr_def);
+  r2(&decl_ptr_def);
+
   { // fcn_def
     fcn_def_def.kind = TYPEDEF;
     static decl members[4];
@@ -224,6 +241,7 @@ void load_defs(){
     inner.cstruct.members = members;
     inner.cstruct.cnt = array_count(members);
     inner.cstruct.name = "_fcn_def";
+  
     members[0].name = "name";
     members[0].type = &char_ptr_def;
     members[1].name = "type";
@@ -234,6 +252,7 @@ void load_defs(){
     members[3].type = &void_ptr_def;
     r2(&fcn_def_def);
   }
+  
   { // cmacrodef_def
     cmacro_def_def.kind = TYPEDEF;
     static decl members[2];
@@ -252,11 +271,5 @@ void load_defs(){
     members[2].type = &void_ptr_def;
     r2(&cmacro_def_def);
   }
-  r2(&type_def_ptr_def);
-  r2(&type_def_def);
-  r2(&decl_def);
-  r2(&decl_ptr_def);
-
-  
 }
 
