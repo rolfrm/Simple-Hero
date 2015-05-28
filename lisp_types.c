@@ -40,7 +40,6 @@ void print_def(type_def * type, bool is_decl){
       format("%s", type->cstruct.name);
     }else{
       format("struct %s{\n", type->cstruct.name == NULL ? "" : type->cstruct.name);
-      
       for(i64 i = 0; i < type->cstruct.cnt; i++){
 	print_def(type->cstruct.members[i].type, true);
 	if(type->cstruct.members[i].name != NULL)
@@ -102,9 +101,6 @@ void print_def(type_def * type, bool is_decl){
 }
 
 void make_dependency_graph(type_def ** defs, type_def * def){
-  logd("def kind: %i\n", def->kind);
-  print_def(def,true);
-  logd("\n");
   type_def ** defs_it = defs;
   for(; *defs_it != NULL; defs_it++){
     if(*defs_it == def)
@@ -113,10 +109,8 @@ void make_dependency_graph(type_def ** defs, type_def * def){
   *defs_it = def;
   switch(def->kind){
   case UNION:
-    logd("--33-- '%s' \n", def->cunion.name);
     for(i64 i = 0; i < def->cunion.cnt; i++){
       type_def * sdef = def->cunion.members[i].type;
-      logd("--44-- '%i' \n", sdef->kind);
       make_dependency_graph(defs,sdef);
     }	  
     if(def->cunion.name == NULL) return;
@@ -130,13 +124,10 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     if(def->cstruct.name == NULL) return;
     break;
   case POINTER:
-    logd("--22-- \n");
     //def = def->ptr.inner;
     make_dependency_graph(defs,def->ptr.inner);
     break;
   case TYPEDEF:
-    log("--55--\n");
-
     make_dependency_graph(defs,def->ctypedef.inner);
     break;
   case ENUM:
@@ -144,11 +135,9 @@ void make_dependency_graph(type_def ** defs, type_def * def){
   case FUNCTION:
     make_dependency_graph(defs, def->fcn.ret);
 
-    for(int i = 0; i < def->fcn.cnt; i++){
-      logd("enter arg\n");
+    for(int i = 0; i < def->fcn.cnt; i++)
       make_dependency_graph(defs, def->fcn.args[i].type);
-      logd("exit arg\n");
-    }
+   
     break;
   case SIMPLE:
     break;

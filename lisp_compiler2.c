@@ -300,7 +300,7 @@ bool test_lisp2c(){
 	
 	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
 	  logd(" -- %i  %i -- \n",deps[i], deps[i]->kind);
-	  //print_def(deps[i],true);logd("\n");
+	  print_def(deps[i],true);logd("\n");
 	}
 	logd("%i\n", str2type("type_def"));
 
