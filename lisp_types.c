@@ -61,13 +61,17 @@ void print_def(type_def * type, bool is_decl){
     }
     break;
   case UNION:
-    format("union {\n");
+    if(is_decl){
+      format("%s", type->cstruct.name);
+    }else{
+      format("union {\n");
 
-    for(i64 i = 0; i < type->cunion.cnt; i++){
-      print_def(type->cunion.members[i].type, false);
-      format(" %s;\n", type->cunion.members[i].name);
+      for(i64 i = 0; i < type->cunion.cnt; i++){
+	print_def(type->cunion.members[i].type, false);
+	format(" %s;\n", type->cunion.members[i].name);
+      }
+      format("};");
     }
-    format("};");
     break;
  
  case TYPEDEF:
@@ -99,6 +103,8 @@ void print_def(type_def * type, bool is_decl){
 
 void make_dependency_graph(type_def ** defs, type_def * def){
   logd("def kind: %i\n", def->kind);
+  print_def(def,true);
+  logd("\n");
   type_def ** defs_it = defs;
   for(; *defs_it != NULL; defs_it++){
     if(*defs_it == def)
@@ -129,15 +135,20 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     make_dependency_graph(defs,def->ptr.inner);
     break;
   case TYPEDEF:
-    log("found typedef");
+    log("--55--\n");
+
     make_dependency_graph(defs,def->ctypedef.inner);
     break;
   case ENUM:
     return;
   case FUNCTION:
     make_dependency_graph(defs, def->fcn.ret);
-    for(int i = 0; i < def->fcn.cnt; i++)
+
+    for(int i = 0; i < def->fcn.cnt; i++){
+      logd("enter arg\n");
       make_dependency_graph(defs, def->fcn.args[i].type);
+      logd("exit arg\n");
+    }
     break;
   case SIMPLE:
     break;
@@ -416,10 +427,6 @@ type_def * get_type_from_string(char * str){
 
 extern decl * umembers;
 void register_type(type_def * ptr, char * name){
-  if(ptr == &type_def_def){
-    //umembers[0].type->kind = STRUCT;
-    loge("::::::10: %i\n",umembers[0].type->kind);  
-  }
   if(name == NULL){
     char * tmpbuf = NULL;
     size_t tmpbuf_size = 0;
@@ -428,11 +435,8 @@ void register_type(type_def * ptr, char * name){
     fclose(str);
     name = tmpbuf;
   }
-
-  if(strcmp(name,"type_def") == 0)
-    loge("::::::4: %i\n",type_def_def.ctypedef.inner->cstruct.members[1].type->cunion.members[0].type->kind);
-  if(strlen(name) == 0)
-    ERROR("type name cannot be empty");
+  if((strlen(name) == 0 )|| strstr("(null)", name) != NULL)
+    ERROR("type name cannot be empty got: '%s'",name);
   type_item * newitem = alloc0(sizeof(type_item));
   newitem->ptr = ptr;
   newitem->name = name;
