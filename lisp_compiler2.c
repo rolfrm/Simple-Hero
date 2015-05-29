@@ -273,14 +273,13 @@ void write_to_c(compiled_lisp cl){
   
   write_dependencies(deps);
   for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-    
-   /*if(deps[i]->kind == TYPEDEF){
-      type_def * inner = deps[i]->ctypedef.inner;
-      if(inner->kind == ENUM){
-	format("Print enum...\n");
-      }
-      print_def(deps[i],true);format(";\n");
-      }*/
+    if(deps[i]->kind == TYPEDEF){
+      continue;
+      print_def(deps[i]->ctypedef.inner,false);
+    }else{
+      print_def(deps[i],false);
+    }
+    format(";\n");
   }
 
   for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
@@ -330,7 +329,7 @@ bool test_lisp2c(){
 
 	logd("parsed %i expr(s).\n", exprcnt);
 	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
-	FILE * f = fopen("compile_out.h","w");
+	FILE * f = fopen("compile_out.c","w");
 	with_format_out(f, lambda( void, (){write_to_c(cl);}));
 	fclose(f);
       };));

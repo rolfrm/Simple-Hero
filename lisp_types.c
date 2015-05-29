@@ -106,7 +106,7 @@ void print_def(type_def * type, bool is_decl){
 
 // if the code depends on *def it also depends on a number of other 
 // types. This is however only what needs to be forward declared.
-void make_dependency_graph(type_def ** defs, type_def * def){
+void _make_dependency_graph(type_def ** defs, type_def * def, bool nested){
   bool check(){
     type_def ** defs_it = defs;
     for(; *defs_it != NULL; defs_it++){
@@ -130,33 +130,33 @@ void make_dependency_graph(type_def ** defs, type_def * def){
   case UNION:
     for(i64 i = 0; i < def->cunion.cnt; i++){
       type_def * sdef = def->cunion.members[i].type;
-      make_dependency_graph(defs,sdef);
+      _make_dependency_graph(defs,sdef,true);
     }	  
     
-    if(def->cunion.name != NULL) check_add();// *defs_it = def;
+    if(def->cunion.name != NULL && !nested) check_add();// *defs_it = def;
     break;
   case STRUCT:
     for(i64 i = 0; i < def->cstruct.cnt; i++){
       type_def * sdef = def->cstruct.members[i].type;
-      make_dependency_graph(defs,sdef);
+      _make_dependency_graph(defs,sdef,true);
     }
-    if(def->cstruct.name != NULL) check_add();;
+    if(def->cstruct.name != NULL && !nested) check_add();;
     break;
   case POINTER:
     //*defs_it = def;
     //def = def->ptr.inner;
-    make_dependency_graph(defs,def->ptr.inner);
+    _make_dependency_graph(defs,def->ptr.inner,nested);
     break;
   case TYPEDEF:
     check_add();    
-    make_dependency_graph(defs,def->ctypedef.inner);
+    _make_dependency_graph(defs,def->ctypedef.inner, nested);
     break;
     
   case FUNCTION:
-    make_dependency_graph(defs, def->fcn.ret);
+    _make_dependency_graph(defs, def->fcn.ret, nested);
 
     for(int i = 0; i < def->fcn.cnt; i++)
-      make_dependency_graph(defs, def->fcn.args[i].type);
+      _make_dependency_graph(defs, def->fcn.args[i].type,nested);
     break;
   case ENUM:
 
@@ -167,6 +167,12 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     ERROR("Unknown type: %i",def->kind);
     break;
   }
+}
+
+// if the code depends on *def it also depends on a number of other 
+// types. This is however only what needs to be forward declared.
+void make_dependency_graph(type_def ** defs, type_def * def){
+  _make_dependency_graph(defs,def,false);
 }
 
 void add_var_dep(char ** vdeps, char * newdep){
