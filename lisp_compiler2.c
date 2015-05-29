@@ -22,7 +22,8 @@ static type_def * compile_value(compiler_state * c, c_value * val, value_expr e)
     return &char_ptr_def;
   case KEYWORD:
   case SYMBOL:
-    val->raw.value = fmtstr("%.*s",e.strln, e.value);
+    val->type = C_SYMBOL;
+    val->symbol = fmtstr("%.*s",e.strln, e.value);
     vdef = get_variable(e.value, e.strln);
     if(vdef == NULL){
       ERROR("Unknown variable '%s'", val->raw.value);
@@ -321,7 +322,7 @@ bool test_lisp2c(){
 	  decl dcl;
 	  dcl.name = var->name;
 	  dcl.type = var->type;
-	  print_cdecl(dcl);format(";\n");
+	  format("extern "); print_cdecl(dcl);format(";\n");
 	}
 	
 	for(size_t i = 0; i < cl.code_cnt; i++){
