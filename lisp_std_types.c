@@ -10,7 +10,7 @@
 
 #include "lisp_std_types.h"
 
- decl * umembers = NULL;
+
 
 static void r(type_def * def){
     register_type(def, def->simple.name);
@@ -82,15 +82,15 @@ void load_defs(){
     members[0].name = "kind";
     {
       static type_def type_def_union;
+      static decl umembers[7];
       type_def_union.kind = UNION;    
       type_def_union.cunion.name = "_type_def_union";
-      type_def_union.cunion.cnt = 1;
+      type_def_union.cunion.cnt = array_count(umembers);
       type_def_union.cunion.members = umembers;
       r2(&type_def_union);
       
       members[1].type = &type_def_union;
 
-      if(umembers == NULL) umembers = alloc0(sizeof(umembers) * 7);
       members[1].name = NULL;
 
       {// anon union members

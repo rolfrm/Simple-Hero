@@ -360,7 +360,6 @@ type_def * _get_type_def(type_def * def){
   type_item * item = NULL;
   HASH_FIND_STR(items, tmpbuf, item);
   if(item != NULL){
-
     free(tmpbuf);
     return item->ptr;
   }
@@ -414,7 +413,6 @@ type_def * get_type_from_string(char * str){
   return NULL;
 }
 
-extern decl * umembers;
 void register_type(type_def * ptr, char * name){
   if(name == NULL){
     char * tmpbuf = NULL;
