@@ -104,44 +104,62 @@ void print_def(type_def * type, bool is_decl){
   }
 }
 
+// if the code depends on *def it also depends on a number of other 
+// types. This is however only what needs to be forward declared.
 void make_dependency_graph(type_def ** defs, type_def * def){
-  type_def ** defs_it = defs;
-  for(; *defs_it != NULL; defs_it++){
-    if(*defs_it == def)
-      return;
+  bool check(){
+    type_def ** defs_it = defs;
+    for(; *defs_it != NULL; defs_it++){
+      if(*defs_it == def)
+	return false;
+    }
+    return true;
   }
-  *defs_it = def;
+  
+  bool check_add(){
+    type_def ** defs_it = defs;
+    for(; *defs_it != NULL; defs_it++){
+      if(*defs_it == def)
+	return false;
+    }
+    *defs_it = def;
+    return true;
+  }
+  if(check() == false) return;
   switch(def->kind){
   case UNION:
     for(i64 i = 0; i < def->cunion.cnt; i++){
       type_def * sdef = def->cunion.members[i].type;
       make_dependency_graph(defs,sdef);
     }	  
-    if(def->cunion.name == NULL) return;
+    
+    if(def->cunion.name != NULL) check_add();// *defs_it = def;
     break;
   case STRUCT:
     for(i64 i = 0; i < def->cstruct.cnt; i++){
       type_def * sdef = def->cstruct.members[i].type;
       make_dependency_graph(defs,sdef);
     }
-
-    if(def->cstruct.name == NULL) return;
+    if(def->cstruct.name != NULL) check_add();;
     break;
   case POINTER:
+    //*defs_it = def;
     //def = def->ptr.inner;
     make_dependency_graph(defs,def->ptr.inner);
     break;
   case TYPEDEF:
+    check_add();    
     make_dependency_graph(defs,def->ctypedef.inner);
     break;
-  case ENUM:
-    return;
+    
   case FUNCTION:
     make_dependency_graph(defs, def->fcn.ret);
 
     for(int i = 0; i < def->fcn.cnt; i++)
       make_dependency_graph(defs, def->fcn.args[i].type);
-   
+    break;
+  case ENUM:
+
     break;
   case SIMPLE:
     break;
@@ -149,7 +167,6 @@ void make_dependency_graph(type_def ** defs, type_def * def){
     ERROR("Unknown type: %i",def->kind);
     break;
   }
-	 
 }
 
 void add_var_dep(char ** vdeps, char * newdep){
@@ -446,7 +463,6 @@ void register_type(type_def * ptr, char * name){
   HASH_ADD_STR(items, name, newitem);
 }
 
-
 void print_cdecl(decl idecl){
   void inner_print(decl idecl){
     
@@ -488,6 +504,10 @@ void write_dependencies(type_def ** deps){
 	format("struct %s;\n", name);
       }
     }
+    if(t->kind == ENUM){
+      ERROR("Should not happen");
+    }
+    loge("%i\n", t->kind);
     if(t->kind == TYPEDEF){
       type_def * inner = t->ctypedef.inner;
       if(inner->kind == STRUCT){
