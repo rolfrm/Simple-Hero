@@ -262,7 +262,22 @@ void print_type(type_def * def){
 }
 
 
-void write_to_c(compiled_lisp cl){
+#include <libtcc.h>
+#include <stdlib.h>
+void tccerror(void * opaque, const char * msg){
+  UNUSED(opaque);
+  format("%s\n",msg);
+}
+
+TCCState * mktccs(){
+  TCCState * tccs = tcc_new();
+  tcc_set_lib_path(tccs,".");
+  tcc_set_error_func(tccs, NULL, tccerror);
+  tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
+  return tccs;
+}
+
+void compile_as_c(compiled_lisp cl){
   type_def * deps[100];
   char * vdeps[100];
   memset(deps, 0, sizeof(deps));
@@ -271,31 +286,43 @@ void write_to_c(compiled_lisp cl){
     c_root_code_dep(deps, vdeps, cl.c_code[i]);
   }
   
-  write_dependencies(deps);
-  for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-    if(deps[i]->kind == TYPEDEF){
-      continue;
-      print_def(deps[i]->ctypedef.inner,false);
-    }else{
-      print_def(deps[i],false);
-    }
-    format(";\n");
-  }
+  void go_write(){
 
-  for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
-    var_def * var = get_variable2(vdeps[i]);
-    ASSERT(var != NULL);
-    decl dcl;
-    dcl.name = var->name;
-    dcl.type = var->type;
-    format("extern "); print_cdecl(dcl);format(";\n");
-  }
+    write_dependencies(deps);
+    for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
+      if(deps[i]->kind == TYPEDEF){
+	continue;
+	print_def(deps[i]->ctypedef.inner,false);
+      }else{
+	print_def(deps[i],false);
+      }
+      format(";\n");
+    }
+    
+    for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
+      var_def * var = get_variable2(vdeps[i]);
+      ASSERT(var != NULL);
+      decl dcl;
+      dcl.name = var->name;
+      dcl.type = var->type;
+      format("extern "); print_cdecl(dcl);format(";\n");
+    }
   
   for(size_t i = 0; i < cl.code_cnt; i++){
     c_root_code_dep(deps, vdeps, cl.c_code[i]);
     print_c_code(cl.c_code[i]);
   }
-  
+  }
+  char * data;
+  size_t cnt;
+  FILE * f = open_memstream(&data, &cnt);
+  with_format_out(f, lambda( void, (){go_write();}));
+  fclose(f);
+  dump_buffer_to_file(data,cnt,"compile_out.c");
+  TCCState * tccs = mktccs();
+  tcc_compile_string(tccs, data);
+
+  free(data);
 }
 
 type_def * _type_macro(expr typexpr);
@@ -329,9 +356,8 @@ bool test_lisp2c(){
 
 	logd("parsed %i expr(s).\n", exprcnt);
 	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
-	FILE * f = fopen("compile_out.c","w");
-	with_format_out(f, lambda( void, (){write_to_c(cl);}));
-	fclose(f);
+	compile_as_c(cl);
+
       };));
   return TEST_FAIL;
 }

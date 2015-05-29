@@ -46,7 +46,7 @@ void print_def(type_def * type, bool is_decl){
 	  format(" %s;\n",type->cstruct.members[i].name);
 	}else{
 	  print_def(type->cstruct.members[i].type, false);
-	  format(";");
+	  format("\n");
 	}
       }
       format("}"); 
