@@ -58,7 +58,7 @@ cmacro_def * get_cmacro_def(char * name, size_t name_len);
 compiled_expr compile_expr(expr * e);
 type_def compile_iexpr(expr expr1);
 void compiler_set_state(compiler_state * ls);
-void write_dependencies(type_def * deps);
+void write_dependencies(type_def ** deps);
 void with_compiler(compiler_state * c, void (* fcn)());
 
 // symbols

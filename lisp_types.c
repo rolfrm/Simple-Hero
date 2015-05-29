@@ -478,6 +478,40 @@ void print_cdecl(decl idecl){
   inner_print(idecl);
 }
 
+void write_dependencies(type_def ** deps){
+  format("#include \"cstd_header.h\"\n");
+  for(; *deps != NULL; deps++){
+    type_def * t = *deps;
+    if(t->kind == STRUCT){
+      char * name = t->cstruct.name;
+      if(name != NULL){
+	format("struct %s;\n", name);
+      }
+    }
+    if(t->kind == TYPEDEF){
+      type_def * inner = t->ctypedef.inner;
+      if(inner->kind == STRUCT){
+	char * name = inner->cstruct.name;
+	char _namebuf[100];
+	if(name == NULL){
+	  sprintf(_namebuf, "_%s_", t->ctypedef.name);
+	  name = _namebuf;
+	}	
+	format("typedef struct %s %s;\n", name, t->ctypedef.name);
+      }
+      if(inner->kind == ENUM){
+	format("typedef enum {\n");
+	for(int j = 0; j < inner->cenum.cnt; j++){
+	  char * comma = (j !=(inner->cenum.cnt-1) ? "," : "");
+	  format("   %s = %i%s\n", inner->cenum.names[j], inner->cenum.values[j], comma);
+	}
+	format("}%s;\n",t->ctypedef.name);
+      }
+    }
+  }
+}
+
+
 
 // test //
 bool test_print_c_code(){

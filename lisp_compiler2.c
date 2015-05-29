@@ -261,6 +261,7 @@ void print_type(type_def * def){
   print_def(def,true);
 }
 
+
 void write_to_c(compiled_lisp cl){
   type_def * deps[100];
   char * vdeps[100];
@@ -268,29 +269,20 @@ void write_to_c(compiled_lisp cl){
   memset(vdeps, 0, sizeof(vdeps));
   for(size_t i = 0; i < cl.code_cnt; i++){
     c_root_code_dep(deps, vdeps, cl.c_code[i]);
-    print_c_code(cl.c_code[i]);
   }
   
-  logd("*** Type dependencies ***\n"){logd("wtf?\n"){}}
+  write_dependencies(deps);
   for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-    if(deps[i]->kind == TYPEDEF){
-      print_def(deps[i],false);
-    }
-    logd("\n");
+    
+   /*if(deps[i]->kind == TYPEDEF){
+      type_def * inner = deps[i]->ctypedef.inner;
+      if(inner->kind == ENUM){
+	format("Print enum...\n");
+      }
+      print_def(deps[i],true);format(";\n");
+      }*/
   }
-  logd(" *** ***\n");
-  logd("*** Variable dependencies ***\n");
-  for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++)
-    logd("%s\n",vdeps[i]);
-  logd("*** ***");
-  logd("%i\n", str2type("type_def"));
-  
-  logd("\n\n\n\n**** Writing C code ****\n");
-  for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-    if(deps[i]->kind == TYPEDEF){
-      print_def(deps[i],false);
-    }
-  }
+
   for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
     var_def * var = get_variable2(vdeps[i]);
     ASSERT(var != NULL);
@@ -338,7 +330,9 @@ bool test_lisp2c(){
 
 	logd("parsed %i expr(s).\n", exprcnt);
 	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
-	write_to_c(cl);
+	FILE * f = fopen("compile_out.h","w");
+	with_format_out(f, lambda( void, (){write_to_c(cl);}));
+	fclose(f);
       };));
   return TEST_FAIL;
 }
