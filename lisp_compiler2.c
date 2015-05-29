@@ -60,7 +60,7 @@ bool read_decl(expr dclexpr, decl * out){
 }
 
 type_def * _type_macro(expr typexpr){
-    if(typexpr.type == EXPR){
+  if(typexpr.type == EXPR){
     sub_expr sexp = typexpr.sub_expr;
     COMPILE_ASSERT(sexp.sub_expr_count > 0);
     expr kind = sexp.sub_exprs[0];
@@ -88,16 +88,16 @@ type_def * _type_macro(expr typexpr){
       out.ptr.inner = _type_macro(sexp.sub_exprs[1]);
       return get_type_def(out);
     }
-    }else{
-      value_expr vkind = typexpr.value;
-      char tname[vkind.strln + 1];
-      strncpy(tname,vkind.value,vkind.strln);
-      tname[vkind.strln] = 0;
-      type_def * td = get_type_from_string(tname);
-      COMPILE_ASSERT(td != NULL);
-      return td;
-    }
-    return &error_def;
+  }else{
+    value_expr vkind = typexpr.value;
+    char tname[vkind.strln + 1];
+    strncpy(tname,vkind.value,vkind.strln);
+    tname[vkind.strln] = 0;
+    type_def * td = get_type_from_string(tname);
+    COMPILE_ASSERT(td != NULL);
+    return td;
+  }
+  return &error_def;
 }
 
 expr symbol_expr(char * name){
@@ -291,19 +291,44 @@ bool test_lisp2c(){
 	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
 
 	type_def * deps[100];
+	char * vdeps[100];
 	memset(deps, 0, sizeof(deps));
-	
+	memset(vdeps, 0, sizeof(vdeps));
 	for(size_t i = 0; i < cl.code_cnt; i++){
-	  c_root_code_dep(deps, cl.c_code[i]);
+	  c_root_code_dep(deps, vdeps, cl.c_code[i]);
 	  print_c_code(cl.c_code[i]);
 	}
 	
+	logd("*** Type dependencies ***\n"){logd("wtf?\n"){}}
 	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-	  logd(" -- %i  %i -- \n",deps[i], deps[i]->kind);
-	  print_def(deps[i],true);logd("\n");
+	  print_def(deps[i],true);
+	  logd("\n");
 	}
+	logd(" *** ***\n");
+	logd("*** Variable dependencies ***\n");
+	for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++)
+	  logd("%s\n",vdeps[i]);
+	logd("*** ***");
 	logd("%i\n", str2type("type_def"));
 
-	};));
+	logd("**** Writing C code ****\n");
+	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
+	  print_def(deps[i],false);format(";\n");
+	}
+	for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
+	  var_def * var = get_variable2(vdeps[i]);
+	  ASSERT(var != NULL);
+	  decl dcl;
+	  dcl.name = var->name;
+	  dcl.type = var->type;
+	  print_cdecl(dcl);format(";\n");
+	}
+	
+	for(size_t i = 0; i < cl.code_cnt; i++){
+	  c_root_code_dep(deps, vdeps, cl.c_code[i]);
+	  print_c_code(cl.c_code[i]);
+	}
+
+      };));
   return TEST_FAIL;
 }

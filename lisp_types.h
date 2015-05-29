@@ -182,8 +182,14 @@ void register_type(type_def * type, char * name);
 // writes the dependencies of a type in defs
 // descending order, so least dependent comes first.
 void make_dependency_graph(type_def ** deps, type_def * def);
-void block_dep(type_def ** deps, c_block blk);
-void c_root_code_dep(type_def ** deps, c_root_code code);
+
+
+// Calculates the type and variable dependencies for a c_root_code.
+void c_root_code_dep(type_def ** deps, char ** vdeps, c_root_code code);
+// Calculates the type and variable dependencies for a c code block.
+void block_dep(type_def ** deps, char ** vdeps,  c_block blk);
+
+
 void get_var_dependencies(char ** type_names, c_root_code * code);
 void print_def(type_def * type, bool is_decl);
 
