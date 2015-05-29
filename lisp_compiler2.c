@@ -258,6 +258,7 @@ type_def * str2type(char * str){
 }
 
 void print_type(type_def * def){
+  logd("This happens %i\n",def);
   print_def(def,true);
 }
 void write_line(char * str){
@@ -325,7 +326,14 @@ void compile_as_c(compiled_lisp cl){
   TCCState * tccs = mktccs();
   for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
       var_def * var = get_variable2(vdeps[i]);
-      tcc_add_symbol(tccs,var->name,var->data);
+      if(var->type->kind == FUNCTION){
+	int fail = tcc_add_symbol(tccs,var->name,var->data);
+	logd("adding var: %s %i ok:%i\n", var->name, var->data, !fail);
+      }else{
+	int fail = tcc_add_symbol(tccs,var->name,&var->data);
+ logd("adding var: %s %i ok:%i\n", var->name, &var->data, !fail);
+      }
+      //ASSERT(var->data == tcc_get_symbol(tccs,var->name));
   }
   int ok = tcc_compile_string(tccs, data);
   free(data);
@@ -347,7 +355,7 @@ bool test_lisp2c(){
   //type_def fcn_def =
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(print_type (type i64))";
-  test_code = "(write_line \"hello sailor!\")";
+  //test_code = "(write_line \"hello sailor!\")";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
