@@ -39,6 +39,7 @@ void load_defs(){
   r2(&u8_def);
   char_ptr_def.kind = POINTER;
   char_ptr_def.ptr.inner = &char_def;
+  r2(&char_ptr_def);
   char_ptr_ptr_def.kind = POINTER;
   char_ptr_ptr_def.ptr.inner = &char_ptr_def;
   r2(&char_ptr_ptr_def);

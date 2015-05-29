@@ -260,7 +260,9 @@ type_def * str2type(char * str){
 void print_type(type_def * def){
   print_def(def,true);
 }
-
+void write_line(char * str){
+  logd("%s\n", str);
+}
 
 #include <libtcc.h>
 #include <stdlib.h>
@@ -305,7 +307,8 @@ void compile_as_c(compiled_lisp cl){
       decl dcl;
       dcl.name = var->name;
       dcl.type = var->type;
-      format("extern "); print_cdecl(dcl);format(";\n");
+      format("extern ");
+      print_cdecl(dcl);format(";\n");
     }
   
   for(size_t i = 0; i < cl.code_cnt; i++){
@@ -320,9 +323,23 @@ void compile_as_c(compiled_lisp cl){
   fclose(f);
   dump_buffer_to_file(data,cnt,"compile_out.c");
   TCCState * tccs = mktccs();
-  tcc_compile_string(tccs, data);
-
+  for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
+      var_def * var = get_variable2(vdeps[i]);
+      tcc_add_symbol(tccs,var->name,var->data);
+  }
+  int ok = tcc_compile_string(tccs, data);
   free(data);
+  logd("Compile ok? %i\n", !ok);
+  int size = tcc_relocate(tccs, NULL);
+  logd("Size: %i\n", size);
+  int ok2 = tcc_relocate(tccs,malloc(size));
+  logd("reloacte ok? %i\n", !ok2);
+  void (* eval_fcn)() = tcc_get_symbol(tccs, "eval");
+  //tcc_delete(tccs);
+
+  ASSERT(eval_fcn != NULL);
+  logd("Eval: \n");
+  eval_fcn();
 }
 
 type_def * _type_macro(expr typexpr);
@@ -330,6 +347,7 @@ bool test_lisp2c(){
   //type_def fcn_def =
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(print_type (type i64))";
+  test_code = "(write_line \"hello sailor!\")";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
@@ -352,6 +370,7 @@ bool test_lisp2c(){
 	  compiler_define_variable_ptr(c, "print_type", type, print_type);
 	  if(type != type2 && type != type3)
 	    ERROR("types does not match");
+	  compiler_define_variable_ptr(c, "write_line", str2type("(fcn void (a (ptr char)))"), &write_line);
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);
