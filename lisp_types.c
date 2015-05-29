@@ -40,10 +40,14 @@ void print_def(type_def * type, bool is_decl){
       format("%s", type->cstruct.name);
     }else{
       format("struct %s{\n", type->cstruct.name == NULL ? "" : type->cstruct.name);
-      for(i64 i = 0; i < type->cstruct.cnt; i++){
-	print_def(type->cstruct.members[i].type, true);
-	if(type->cstruct.members[i].name != NULL)
+      for(i64 i = 0; i < type->cstruct.cnt; i++){	
+	if(type->cstruct.members[i].name != NULL){
+	  print_def(type->cstruct.members[i].type, true);
 	  format(" %s;\n",type->cstruct.members[i].name);
+	}else{
+	  print_def(type->cstruct.members[i].type, false);
+	  format(";");
+	}
       }
       format("}"); 
     }
@@ -61,7 +65,7 @@ void print_def(type_def * type, bool is_decl){
     break;
   case UNION:
     if(is_decl){
-      format("%s", type->cstruct.name);
+      format("%s", type->cunion.name);
     }else{
       format("union {\n");
 

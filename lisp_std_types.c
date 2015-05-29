@@ -84,10 +84,10 @@ void load_defs(){
       static type_def type_def_union;
       static decl umembers[7];
       type_def_union.kind = UNION;    
-      type_def_union.cunion.name = "_type_def_union";
+      type_def_union.cunion.name = NULL;
       type_def_union.cunion.cnt = array_count(umembers);
       type_def_union.cunion.members = umembers;
-      r2(&type_def_union);
+      //      r2(&type_def_union);
       
       members[1].type = &type_def_union;
 

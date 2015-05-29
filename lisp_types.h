@@ -18,14 +18,14 @@ typedef struct _decl decl;
 struct _type_def{
   type_def_kind kind;
   union{
-    struct{
+    struct _enum{
       char ** names;
       i64 * values;
       i64 cnt;
       char * enum_name;
     }cenum;
 
-    struct{
+    struct _simple{
       char * name;
       char * cname;
     }simple;

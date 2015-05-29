@@ -120,7 +120,9 @@ type_def * type_macro(compiler_state * c, c_block * block, c_value * value, expr
   value->type = C_INLINE_VALUE;
   value->raw.value = "NULL";
   value->raw.type = &type_def_ptr_def;
-  return _compile_expr(c, block, value, symbol_expr(varname));
+  type_def * rt = _compile_expr(c, block, value, symbol_expr(varname));
+  //dealloc(varname);
+  return rt;
 }
 
 static type_def * __compile_expr(compiler_state * c, c_block * block, c_value * value, sub_expr * se){
@@ -259,6 +261,52 @@ void print_type(type_def * def){
   print_def(def,true);
 }
 
+void write_to_c(compiled_lisp cl){
+  type_def * deps[100];
+  char * vdeps[100];
+  memset(deps, 0, sizeof(deps));
+  memset(vdeps, 0, sizeof(vdeps));
+  for(size_t i = 0; i < cl.code_cnt; i++){
+    c_root_code_dep(deps, vdeps, cl.c_code[i]);
+    print_c_code(cl.c_code[i]);
+  }
+  
+  logd("*** Type dependencies ***\n"){logd("wtf?\n"){}}
+  for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
+    if(deps[i]->kind == TYPEDEF){
+      print_def(deps[i],false);
+    }
+    logd("\n");
+  }
+  logd(" *** ***\n");
+  logd("*** Variable dependencies ***\n");
+  for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++)
+    logd("%s\n",vdeps[i]);
+  logd("*** ***");
+  logd("%i\n", str2type("type_def"));
+  
+  logd("\n\n\n\n**** Writing C code ****\n");
+  for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
+    if(deps[i]->kind == TYPEDEF){
+      print_def(deps[i],false);
+    }
+  }
+  for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
+    var_def * var = get_variable2(vdeps[i]);
+    ASSERT(var != NULL);
+    decl dcl;
+    dcl.name = var->name;
+    dcl.type = var->type;
+    format("extern "); print_cdecl(dcl);format(";\n");
+  }
+  
+  for(size_t i = 0; i < cl.code_cnt; i++){
+    c_root_code_dep(deps, vdeps, cl.c_code[i]);
+    print_c_code(cl.c_code[i]);
+  }
+  
+}
+
 type_def * _type_macro(expr typexpr);
 bool test_lisp2c(){
   //type_def fcn_def =
@@ -290,46 +338,7 @@ bool test_lisp2c(){
 
 	logd("parsed %i expr(s).\n", exprcnt);
 	compiled_lisp cl = compile_lisp_to_c(c, exprs, exprcnt);
-
-	type_def * deps[100];
-	char * vdeps[100];
-	memset(deps, 0, sizeof(deps));
-	memset(vdeps, 0, sizeof(vdeps));
-	for(size_t i = 0; i < cl.code_cnt; i++){
-	  c_root_code_dep(deps, vdeps, cl.c_code[i]);
-	  print_c_code(cl.c_code[i]);
-	}
-	
-	logd("*** Type dependencies ***\n"){logd("wtf?\n"){}}
-	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-	  print_def(deps[i],true);
-	  logd("\n");
-	}
-	logd(" *** ***\n");
-	logd("*** Variable dependencies ***\n");
-	for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++)
-	  logd("%s\n",vdeps[i]);
-	logd("*** ***");
-	logd("%i\n", str2type("type_def"));
-
-	logd("**** Writing C code ****\n");
-	for(size_t i = 0; i < array_count(deps) && deps[i] != NULL; i++){
-	  print_def(deps[i],false);format(";\n");
-	}
-	for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
-	  var_def * var = get_variable2(vdeps[i]);
-	  ASSERT(var != NULL);
-	  decl dcl;
-	  dcl.name = var->name;
-	  dcl.type = var->type;
-	  format("extern "); print_cdecl(dcl);format(";\n");
-	}
-	
-	for(size_t i = 0; i < cl.code_cnt; i++){
-	  c_root_code_dep(deps, vdeps, cl.c_code[i]);
-	  print_c_code(cl.c_code[i]);
-	}
-
+	write_to_c(cl);
       };));
   return TEST_FAIL;
 }
