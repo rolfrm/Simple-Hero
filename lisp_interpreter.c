@@ -64,10 +64,10 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
     
     sub_expr sexpr = expr->sub_expr;
     lisp_result * results;
-    lisp_result _results[sexpr.sub_expr_count];
+    lisp_result _results[sexpr.cnt];
     results = _results;
-    for(int i = 0; i < sexpr.sub_expr_count; i++){
-      eval_expr(sexpr.sub_exprs + i, just_check_types, results + i);
+    for(int i = 0; i < sexpr.cnt; i++){
+      eval_expr(sexpr.exprs + i, just_check_types, results + i);
       if(results[i].typeid == TYPEID_ERROR){
 	ERROR("ERROR matching type at arg %i ", i);
       }
@@ -75,7 +75,7 @@ void eval_expr(expr * expr, bool just_check_types, lisp_result * result){
     char * name = results[0].data_str;
     
     results++;
-    u32 argn = sexpr.sub_expr_count -1;
+    u32 argn = sexpr.cnt -1;
     
 
     if(strcmp(name, "circle")){

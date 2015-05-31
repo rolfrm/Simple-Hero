@@ -113,8 +113,8 @@ char * parse_subexpr(char * code, sub_expr * subexpr){
     return NULL;
   code++;
   code = take_while(code,is_whitespace);
-  subexpr->sub_exprs = NULL;
-  subexpr->sub_expr_count = 0;
+  subexpr->exprs = NULL;
+  subexpr->cnt = 0;
   expr exprs[10];
   int len = 0;
 
@@ -123,9 +123,9 @@ char * parse_subexpr(char * code, sub_expr * subexpr){
 
   if(*code == ')'){
 
-    subexpr->sub_expr_count = len;
-    subexpr->sub_exprs = malloc(len * sizeof(expr));
-    memcpy(subexpr->sub_exprs, exprs, len * sizeof(expr));
+    subexpr->cnt = len;
+    subexpr->exprs = malloc(len * sizeof(expr));
+    memcpy(subexpr->exprs, exprs, len * sizeof(expr));
 
     return code + 1;  
   }
@@ -165,10 +165,10 @@ char * parse_expr(char * code, expr * out_expr){
 void delete_expr(expr * expr){
   if(expr->type == EXPR){
     sub_expr sexpr = expr->sub_expr;
-    for(int i = 0 ; i < sexpr.sub_expr_count; i++){
-      delete_expr(sexpr.sub_exprs + i);
+    for(int i = 0 ; i < sexpr.cnt; i++){
+      delete_expr(sexpr.exprs + i);
     }
-    free(sexpr.sub_exprs);
+    free(sexpr.exprs);
   }
 }
 
@@ -192,8 +192,8 @@ void print_expr(expr * expr1){
     switch(expr2->type){
     case EXPR:
       //printf("%-7s: %*s %.*s \n","expr", indent, " ", value.strln, subexpr.name.value);
-      for(int i = 0 ; i < subexpr.sub_expr_count; i++){
-	iprint(subexpr.sub_exprs + i,indent + 1);
+      for(int i = 0 ; i < subexpr.cnt; i++){
+	iprint(subexpr.exprs + i,indent + 1);
       }
       break;
     case VALUE:

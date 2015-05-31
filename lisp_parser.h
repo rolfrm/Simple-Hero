@@ -29,8 +29,8 @@ typedef struct{
 typedef struct _expr expr;
 
 typedef struct{
-  expr * sub_exprs;
-  int sub_expr_count;  
+  expr * exprs;
+  int cnt;  
 }sub_expr;
 
 struct _expr{

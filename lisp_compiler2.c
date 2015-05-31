@@ -46,9 +46,9 @@ type_def * _type_macro(expr typexpr);
 bool read_decl(expr dclexpr, decl * out){
   if(dclexpr.type == EXPR){
     sub_expr sexpr = dclexpr.sub_expr;
-    if(sexpr.sub_expr_count == 2){
-      expr name = sexpr.sub_exprs[0];
-      expr type = sexpr.sub_exprs[1];
+    if(sexpr.cnt == 2){
+      expr name = sexpr.exprs[0];
+      expr type = sexpr.exprs[1];
       if(name.type == VALUE && name.value.type == SYMBOL){
 	out->name = fmtstr("%.*s",name.value.strln, name.value.value);
 	out->type = _type_macro(type);
@@ -62,30 +62,30 @@ bool read_decl(expr dclexpr, decl * out){
 type_def * _type_macro(expr typexpr){
   if(typexpr.type == EXPR){
     sub_expr sexp = typexpr.sub_expr;
-    COMPILE_ASSERT(sexp.sub_expr_count > 0);
-    expr kind = sexp.sub_exprs[0];
+    COMPILE_ASSERT(sexp.cnt > 0);
+    expr kind = sexp.exprs[0];
     COMPILE_ASSERT(kind.type == VALUE && kind.value.type == SYMBOL);
     value_expr vkind = kind.value;
 
     if(strncmp(vkind.value,"fcn",vkind.strln) == 0){
       type_def out;
       out.kind = FUNCTION;
-      COMPILE_ASSERT(sexp.sub_expr_count > 1);
-      type_def * ret = _type_macro(sexp.sub_exprs[1]);
+      COMPILE_ASSERT(sexp.cnt > 1);
+      type_def * ret = _type_macro(sexp.exprs[1]);
       COMPILE_ASSERT(&error_def != ret);
-      decl args[sexp.sub_expr_count - 2];
-      for(int i = 0; i < sexp.sub_expr_count - 2; i++){
-	COMPILE_ASSERT(read_decl(sexp.sub_exprs[i + 2], args + i));
+      decl args[sexp.cnt - 2];
+      for(int i = 0; i < sexp.cnt - 2; i++){
+	COMPILE_ASSERT(read_decl(sexp.exprs[i + 2], args + i));
       } 
       out.fcn.ret = ret;
       out.fcn.args = clone(args, sizeof(args));
       out.fcn.cnt = array_count(args);
       return get_type_def(out);
     }else if (strncmp(vkind.value,"ptr",vkind.strln) == 0){
-      COMPILE_ASSERT(sexp.sub_expr_count == 2);
+      COMPILE_ASSERT(sexp.cnt == 2);
       type_def out;
       out.kind = POINTER;
-      out.ptr.inner = _type_macro(sexp.sub_exprs[1]);
+      out.ptr.inner = _type_macro(sexp.exprs[1]);
       return get_type_def(out);
     }
   }else{
@@ -119,13 +119,13 @@ static type_def * _compile_expr(c_block * block, c_value * val,  expr e );
 
 static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se){
   UNUSED(value);
-  if(se->sub_expr_count == 0)
+  if(se->cnt == 0)
     ERROR("sub expressio count 0");
-  expr name_expr = se->sub_exprs[0];
+  expr name_expr = se->exprs[0];
   if(name_expr.type != VALUE && name_expr.value.type != SYMBOL) ERROR("need symbol for first car");
   
-  expr * args = se->sub_exprs + 1;
-  i64 argcnt = se->sub_expr_count - 1;
+  expr * args = se->exprs + 1;
+  i64 argcnt = se->cnt - 1;
 
   char name[name_expr.value.strln + 1];
   sprintf(name, "%.*s", name_expr.value.strln, name_expr.value.value);
@@ -180,11 +180,11 @@ static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se
   }else{
     ERROR("Not supported..\n");
   }
-  type_def * sub_types[se->sub_expr_count];
+  type_def * sub_types[se->cnt];
   UNUSED(sub_types);
-  c_value val[se->sub_expr_count];
-  for(i64 i = 0; i < se->sub_expr_count; i++){
-    expr * e = se->sub_exprs + i;
+  c_value val[se->cnt];
+  for(i64 i = 0; i < se->cnt; i++){
+    expr * e = se->exprs + i;
     
     sub_types[i] = _compile_expr(block, val + i, *e);
   }
@@ -352,9 +352,18 @@ type_def * type_macro(c_block * block, c_value * value, expr e){
 expr mk_sub_expr(expr * exprs, size_t cnt){
   expr e;
   e.type = EXPR;
-  e.sub_expr.sub_exprs = exprs;
-  e.sub_expr.sub_expr_count = cnt;
+  e.sub_expr.exprs = exprs;
+  e.sub_expr.cnt = cnt;
   return e;
+}
+
+type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
+  COMPILE_ASSERT(vars.type == EXPR);
+  //c_value vars[varcnt];
+}
+
+type_def * progn_macro(c_block * block, c_value * val, expr expressions){
+  // todo: requires varadic macros.
 }
 
 type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, expr body){
@@ -369,7 +378,7 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
 
   UNUSED(block);
   COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
-  COMPILE_ASSERT(args.type == EXPR && args.sub_expr.sub_expr_count > 0);
+  COMPILE_ASSERT(args.type == EXPR && args.sub_expr.cnt > 0);
 
   char * fcnname = fmtstr("%.*s",name.value.strln,name.value.value);
   logd("defining function: '%s'\n", fcnname);
@@ -382,10 +391,10 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
   decl *fdecl = &f->fdecl;
   fdecl->name = fcnname;
   
-  expr subexpr[args.sub_expr.sub_expr_count + 1];
+  expr subexpr[args.sub_expr.cnt + 1];
   subexpr[0] = symbol_expr("fcn");
-  for(int i = 1; i < args.sub_expr.sub_expr_count + 1; i++){
-    subexpr[i] = args.sub_expr.sub_exprs[i-1];
+  for(int i = 1; i < args.sub_expr.cnt + 1; i++){
+    subexpr[i] = args.sub_expr.exprs[i-1];
   }
   
   expr typexpr = mk_sub_expr(subexpr, array_count(subexpr));
