@@ -16,6 +16,26 @@ void with_compiler(compiler_state * c, void (* fcn)()){
   lisp_state = old;
 }
 
+compiler_state * get_compiler(){
+  return lisp_state;
+}
+
+void compiler_define_variable_ptr(char * name, type_def * t, void * ptr){
+  var_def vdef;
+  vdef.name = name;
+  vdef.type = t;
+  vdef.data = ptr;
+  list_add((void **)&lisp_state->vars, &lisp_state->var_cnt, &vdef, sizeof(var_def));
+}
+
+void define_macro(char * name, int nargs, void * fcn){
+  cmacro_def cast_def;
+  cast_def.arg_cnt = nargs;
+  cast_def.fcn = fcn;;
+  cast_def.name = name;
+  compiler_define_variable_ptr(name, &cmacro_def_def, clone(&cast_def,sizeof(cmacro_def)));
+}
+
 compiler_state * compiler_make(){
   return alloc0(sizeof(compiler_state));
 }

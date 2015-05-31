@@ -42,15 +42,19 @@ typedef struct{
   void * fcn;
 }cmacro_def;
 
-void * compiler_define_variable(compiler_state *c, char * name, type_def * t);
+compiler_state * get_compiler();
+compiler_state * compiler_make();
+
+void * compiler_define_variable(char * name, type_def * t);
 // defines a variable pointer.
-void compiler_define_variable_ptr(compiler_state * c, char * name, type_def * t, void * ptr);
+void compiler_define_variable_ptr(char * name, type_def * t, void * ptr);
+void define_macro(char * name, int nargs, void * fcn);
+
 void compiler_reg_type(compiler_state *c, char * name, type_def * t);
 void compiler_load_types(compiler_state *);
 
 bool fcn_def_cmp(fcn_def a, fcn_def b);
 comp_state comp_state_make();
-compiler_state * compiler_make();
 var_def * get_variable(char * name, size_t name_len);
 var_def * get_variable2(char * name);
 fcn_def * get_fcn_def(char * name, size_t name_len);

@@ -245,8 +245,8 @@ void block_dep(type_def ** deps, char ** vdeps, c_block blk){
 void c_root_code_dep(type_def ** deps, char ** vdeps, c_root_code code){
   switch(code.type){
   case C_FUNCTION_DEF:
-    make_dependency_graph(deps, code.fundef.fdecl.type);
-    block_dep(deps, vdeps, code.fundef.block);
+    make_dependency_graph(deps, code.fcndef.fdecl.type);
+    block_dep(deps, vdeps, code.fcndef.block);
     break;
   case C_VAR_DEF:
     make_dependency_graph(deps, code.var.var.type);
@@ -345,9 +345,9 @@ void print_block(c_block blk){
   format("}\n");
 }
 
-void print_fcn_code(c_fundef fundef){
-  print_cdecl(fundef.fdecl);
-  print_block(fundef.block);
+void print_fcn_code(c_fcndef fcndef){
+  print_cdecl(fcndef.fdecl);
+  print_block(fcndef.block);
 }
 
 void print_c_code(c_root_code code){
@@ -360,7 +360,7 @@ void print_c_code(c_root_code code){
     break;
   case C_FUNCTION_DEF:
 
-    print_fcn_code(code.fundef);
+    print_fcn_code(code.fcndef);
     break;
   case C_VAR_DEF:
     print_c_var(code.var);
@@ -569,7 +569,7 @@ bool test_print_c_code(){
     expr.type = C_VALUE;
     expr.value = cv1;
     
-    c_fundef fundef;
+    c_fcndef fundef;
     type_def ftype;
     ftype.kind = FUNCTION;
     ftype.fcn.cnt = 0;
@@ -607,7 +607,7 @@ bool test_print_c_code(){
     
     c_root_code c2;
     c2.type = C_FUNCTION_DEF;
-    c2.fundef = fundef;
+    c2.fcndef = fundef;
     print_c_code(c2);
   }
 

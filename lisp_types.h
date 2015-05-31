@@ -64,10 +64,7 @@ struct _decl{
   type_def * type;
 };
 
-// requires lisp_types.h
-struct _c_fundef;
-typedef struct _c_fundef c_fundef;
-struct _c_expr;
+typedef struct _c_fcndef c_fcndef;
 typedef struct _c_expr c_expr;
 
 typedef struct{
@@ -75,7 +72,7 @@ typedef struct{
   size_t expr_cnt;
 }c_block;
 
-struct _c_fundef{
+struct _c_fcndef{
   decl fdecl;
   c_block block;
 };
@@ -163,7 +160,7 @@ typedef struct{
   c_root_code_kind type;
   union{
     char * include;
-    c_fundef fundef;
+    c_fcndef fcndef;
     c_var var;
     decl decl;
     type_def * type_def;
