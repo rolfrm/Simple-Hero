@@ -456,7 +456,6 @@ type_def * get_type_def(type_def def){
 }
 
 type_def * get_type_from_string(char * str){
-  logd("fetch type '%s'\n",str);
   type_item * item = NULL;
   HASH_FIND_STR(items, str, item);
   if(item != NULL)

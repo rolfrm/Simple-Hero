@@ -229,8 +229,6 @@ c_root_code compile_lisp_to_eval(expr exp){
   expr.value = val;
   list_add((void **) &f->block.exprs, &f->block.expr_cnt, &expr, sizeof(c_expr));
 
-
-  
   return r;
 }
 
@@ -424,12 +422,16 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
   // ** Just return the function name ** //
   return compile_value(value, string_expr(fcnname).value);
 }
+
+i64 i64_add(i64 a, i64 b){
+  return a + b;
+}
 	  
 bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(type (ptr (ptr (ptr (ptr (ptr (ptr (ptr char))))))))";
   test_code = "\"hello sailor!\"";
-  test_code = "(defun fst (i64 (a i64) (b i64)) a)";
+  test_code = "(defun add2 (i64 (a i64)) (i64_add a a)) (add2 5)";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
@@ -446,10 +448,13 @@ bool test_lisp2c(){
 	  compiler_define_variable_ptr("print_type", type, print_type);
 	  ASSERT(type == type2 && type != type3);
 	  compiler_define_variable_ptr("write_line", str2type("(fcn void (a (ptr char)))"), &write_line);
+	  compiler_define_variable_ptr("i64_add", str2type("(fcn i64 (a i64) (b i64))"), &i64_add);
+	  ASSERT(NULL != get_variable2("i64_add"));
 	}
 
 	logd("parsed %i expr(s).\n", exprcnt);
 	for(size_t i = 0; i < exprcnt; i++){
+	  logd("Iteration: %i\n",i);
 	  c_root_code cl = compile_lisp_to_eval(exprs[i]);
 	  compile_as_c(&cl,1);
 	  var_def * evaldef = get_variable2("eval");
@@ -470,6 +475,10 @@ bool test_lisp2c(){
 	    void * (* fcn)() = evaldef->data;
 	    void * ptr = fcn();
 	    logd("ptr: %x\n", ptr);
+	  }else if(evaldef->type->fcn.ret == &i64_def){
+	    i64 (* fcn)() = evaldef->data;
+	    i64 v = fcn();
+	    logd("%i\n",v);
 	  }else{
 	    logd("\n");
 	    loge("Unable to eval function of this type\n");
