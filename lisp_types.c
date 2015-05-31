@@ -207,8 +207,11 @@ void value_dep(type_def ** deps, char ** vdeps, c_value val){
     break;
   case C_SYMBOL:
     var = get_variable2(val.symbol);
-    if(var == NULL)
-      ERROR("Undefined symbol '%s'",val.symbol);
+    if(var == NULL){
+      //ERROR("Undefined symbol '%s'",val.symbol);
+      // might be a local variable.
+      return;
+    }
     add_var_dep(vdeps, val.symbol);
     make_dependency_graph(deps, var->type);
     break;
@@ -347,7 +350,17 @@ void print_block(c_block blk){
 
 void print_fcn_code(c_fcndef fcndef){
   print_cdecl(fcndef.fdecl);
-  print_block(fcndef.block);
+  // ** handle variables ** //
+  type_def * typeid  = fcndef.fdecl.type;
+  size_t varcnt = typeid->fcn.cnt;
+  var_def _vars[typeid->fcn.cnt];
+  var_def * vars = _vars;
+  for(size_t i = 0; i < varcnt; i++){
+    vars[i].data = NULL;
+    vars[i].name = typeid->fcn.args[i].name;
+    vars[i].type = typeid->fcn.args[i].type;
+  }
+  with_symbols(&vars,&varcnt,lambda(void,(){print_block(fcndef.block);}));
 }
 
 void print_c_code(c_root_code code){

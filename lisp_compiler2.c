@@ -109,6 +109,12 @@ expr symbol_expr(char * name){
   return e;
 }
 
+expr string_expr(char * name){
+  expr e = symbol_expr(name);
+  e.value.type = STRING;
+  return e;
+}
+
 static type_def * _compile_expr(c_block * block, c_value * val,  expr e );
 
 static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se){
@@ -218,12 +224,13 @@ c_root_code compile_lisp_to_eval(expr exp){
   f->fdecl.type = get_type_def(td);
 
   c_expr expr;
-  expr.type = C_RETURN;
+  expr.type = C_VALUE;
+  if(t != &void_def) expr.type = C_RETURN;
   expr.value = val;
   list_add((void **) &f->block.exprs, &f->block.expr_cnt, &expr, sizeof(c_expr));
-  if(t != &void_def){
-    
-  }
+
+
+  
   return r;
 }
 
@@ -308,14 +315,13 @@ void compile_as_c(c_root_code * codes, size_t code_cnt){
       ASSERT(!fail);
     }
   }
-  int ok = tcc_compile_string(tccs, data);
+  int fail = tcc_compile_string(tccs, data);
   free(data);
+  ASSERT(!fail);
   data = NULL;
-  logd("Compile ok? %i\n", !ok);
   int size = tcc_relocate(tccs, NULL);
-  logd("Size: %i\n", size);
-  int ok2 = tcc_relocate(tccs, alloc(size));
-  logd("reloacte ok? %i\n", !ok2);
+  fail = tcc_relocate(tccs, alloc(size));
+  ASSERT(!fail);
   
   for(size_t i = 0; i < code_cnt; i++){
     c_root_code r = codes[i];
@@ -344,19 +350,86 @@ type_def * type_macro(c_block * block, c_value * value, expr e){
   return rt;
 }
 
+expr mk_sub_expr(expr * exprs, size_t cnt){
+  expr e;
+  e.type = EXPR;
+  e.sub_expr.sub_exprs = exprs;
+  e.sub_expr.sub_expr_count = cnt;
+  return e;
+}
+
 type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, expr body){
-  UNUSED(block);UNUSED(body);UNUSED(value);
+
+  // This function is rather complicated.
+  // it handles turning something this: (defun funname (void (a i64) (b i64)) (+ a b)) 
+  // into a function that can be called from througout the system.
+
+  // there is really no simple way of doing this. <100 lines of code is ok for this task.
+  // it generates a new c AST for defining the function and compiles it runtime.
+  // it then registers the new function as a variable and returns the name of it.
+
+  UNUSED(block);
   COMPILE_ASSERT(name.type == VALUE && name.value.type == SYMBOL);
   COMPILE_ASSERT(args.type == EXPR && args.sub_expr.sub_expr_count > 0);
 
-  return &error_def;
+  char * fcnname = fmtstr("%.*s",name.value.strln,name.value.value);
+  logd("defining function: '%s'\n", fcnname);
+  c_root_code newfcn_root;
+  newfcn_root.type = C_FUNCTION_DEF;
+  c_fcndef * f = &newfcn_root.fcndef;
+  c_block * blk = &f->block;
+  
+  // ** get function decleration **
+  decl *fdecl = &f->fdecl;
+  fdecl->name = fcnname;
+  
+  expr subexpr[args.sub_expr.sub_expr_count + 1];
+  subexpr[0] = symbol_expr("fcn");
+  for(int i = 1; i < args.sub_expr.sub_expr_count + 1; i++){
+    subexpr[i] = args.sub_expr.sub_exprs[i-1];
+  }
+  
+  expr typexpr = mk_sub_expr(subexpr, array_count(subexpr));
+
+  type_def * typeid = _type_macro(typexpr);
+  fdecl->type = typeid;
+  // ** register arguments as symbols ** //
+  size_t varcnt = typeid->fcn.cnt;
+  var_def _vars[typeid->fcn.cnt];
+  var_def * vars = _vars;
+  for(size_t i = 0; i < varcnt; i++){
+    vars[i].data = NULL;
+    vars[i].name = typeid->fcn.args[i].name;
+    vars[i].type = typeid->fcn.args[i].type;
+  }
+  
+  // ** Compile body with symbols registered ** //
+  c_value val;
+  with_symbols(&vars, &varcnt, lambda(void, (){
+	type_def * td = _compile_expr(blk,&val, body);
+	ASSERT(td == typeid->fcn.ret);
+      }));
+  c_expr expr;
+  if(typeid->fcn.ret == &void_def){
+    expr.type = C_VALUE;
+  }else{
+    expr.type = C_RETURN;
+  }
+  expr.value = val;
+
+  blk->exprs = NULL;
+  blk->expr_cnt = 0;
+  list_add((void **) &blk->exprs, &blk->expr_cnt, &expr, sizeof(c_expr));
+  compile_as_c(&newfcn_root,1);
+  // ** Just return the function name ** //
+  return compile_value(value, string_expr(fcnname).value);
 }
 	  
 bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(type (ptr (ptr (ptr (ptr (ptr (ptr (ptr char))))))))";
   test_code = "\"hello sailor!\"";
-  //test_code = "(defun fst (i64 (a i64) (b i64)) a)";
+  test_code = "(defun fst (i64 (a i64) (b i64)) a)";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
@@ -397,10 +470,12 @@ bool test_lisp2c(){
 	    void * (* fcn)() = evaldef->data;
 	    void * ptr = fcn();
 	    logd("ptr: %x\n", ptr);
+	  }else{
+	    logd("\n");
+	    loge("Unable to eval function of this type\n");
 	  }
 	}
-	//void (*fcn)() = evaldef->data;
-	//fcn();
+
       };));
   return TEST_FAIL;
 }
