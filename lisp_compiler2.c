@@ -134,10 +134,10 @@ static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se
   if(fvar->type == &cmacro_def_def){
     cmacro_def * macro = fvar->data;
 
-    if(macro->arg_cnt != argcnt)
+    if(macro->arg_cnt != argcnt && macro->arg_cnt != -1)
       ERROR("Unsupported number of arguments %i for %s",argcnt, macro->name);
 
-    switch(argcnt){
+    switch(macro->arg_cnt){
     case 0:
       return ((type_def *(*)(c_block * block, c_value * value)) macro->fcn)(block,value);
     case 1:
@@ -148,6 +148,9 @@ static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se
     case 3:
       return ((type_def *(*)(c_block * block, c_value * value, expr,expr,expr)) 
 	      macro->fcn)(block,value,args[0],args[1],args[2]);
+    case -1:
+      logd("Varadic macro: %i\n", se->cnt);
+      return ((type_def *(*)(c_block * block, c_value * value, expr *,size_t))macro->fcn)(block,value,args, argcnt);
     default:
       ERROR("Number of macro arguments not supported: %i", argcnt);
     }
@@ -255,7 +258,6 @@ TCCState * mktccs(){
   tcc_set_output_type(tccs, TCC_OUTPUT_MEMORY);
   return tccs;
 }
-
 
 void compile_as_c(c_root_code * codes, size_t code_cnt){
   type_def * deps[100];
@@ -388,9 +390,23 @@ type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
   return ret_type;
 }
 
-//type_def * progn_macro(c_block * block, c_value * val, expr expressions){
+type_def * progn_macro(c_block * block, c_value * val, expr * expressions, size_t expr_cnt){
   // todo: requires varadic macros.
-//}
+  type_def * d;
+  for(size_t i = 0; i < expr_cnt; i++){
+    c_value _val;
+    d = _compile_expr(block, &_val, expressions[i]);
+    if(i == expr_cnt -1){
+      *val = _val;
+      return d;
+    }
+    c_expr expr;
+    expr.type = C_VALUE;
+    expr.value = _val;
+    list_add((void **) &block->exprs, &block->expr_cnt,&expr,sizeof(c_expr));
+  }
+  return &void_def;
+}
 
 type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, expr body){
 
@@ -467,6 +483,7 @@ bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(type (ptr (ptr (ptr (ptr (ptr (ptr (ptr char))))))))";
   test_code = "(var ((x \"hello sailor!\")) x)";
+  test_code = "(progn (write_line \"hello\") (write_line \"world!\") (var ((x \"asd\")) x))";
   //test_code = "(defun add2 (i64 (a i64)) (var ((b(i64_add a a)) (add2 (add2 (add2 5)))";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
@@ -478,6 +495,7 @@ bool test_lisp2c(){
 	define_macro("type",1,&type_macro);
 	define_macro("defun",3,&defun_macro);
 	define_macro("var",2,&var_macro);
+	define_macro("progn", -1,&progn_macro);
 	{
 	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
 	  type_def * type2 = str2type("(fcn void (a (ptr type_def)))");
