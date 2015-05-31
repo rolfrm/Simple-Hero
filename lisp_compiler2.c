@@ -176,7 +176,6 @@ static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se
     value->type = C_FUNCTION_CALL;
     value->call = call;
     value->call.arg_cnt = argcnt;
-    format("hello\n");
     return td->fcn.ret;
   }else{
     ERROR("Not supported..\n");
@@ -301,7 +300,9 @@ void compile_as_c(c_root_code * codes, size_t code_cnt){
   FILE * f = open_memstream(&data, &cnt);
   with_format_out(f, lambda( void, (){go_write();}));
   fclose(f);
-  dump_buffer_to_file(data,cnt,"compile_out.c");
+  char header[] = "***********\n";
+  append_buffer_to_file(header,sizeof(header),"compile_out.c");
+  append_buffer_to_file(data,cnt,"compile_out.c");
   TCCState * tccs = mktccs();
   for(size_t i = 0; i < array_count(vdeps) && vdeps[i] != NULL; i++){
     var_def * var = get_variable2(vdeps[i]);
@@ -431,7 +432,7 @@ bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(type (ptr (ptr (ptr (ptr (ptr (ptr (ptr char))))))))";
   test_code = "\"hello sailor!\"";
-  test_code = "(defun add2 (i64 (a i64)) (i64_add a a)) (add2 5)";
+  test_code = "(defun add2 (i64 (a i64)) (i64_add a a)) (add2 (add2 (add2 5)))";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();

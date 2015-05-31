@@ -6,6 +6,8 @@
 #include "lisp_compiler.h"
 #include "lisp_std_types.h"
 
+//todo: Optimize to use symbols instead.
+
 typedef struct _symbol_stack symbol_stack;
 struct _symbol_stack{
   var_def ** vars;
