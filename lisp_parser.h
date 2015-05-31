@@ -23,14 +23,14 @@ typedef enum{
 typedef struct{
   value_type type;
   char * value;
-  int strln;
+  size_t strln;
 }value_expr;
 
 typedef struct _expr expr;
 
 typedef struct{
   expr * exprs;
-  int cnt;  
+  size_t cnt;  
 }sub_expr;
 
 struct _expr{

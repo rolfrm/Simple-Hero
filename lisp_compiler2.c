@@ -359,7 +359,28 @@ expr mk_sub_expr(expr * exprs, size_t cnt){
 
 type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
   COMPILE_ASSERT(vars.type == EXPR);
-  //c_value vars[varcnt];
+  sub_expr sexpr = vars.sub_expr;
+  c_expr cvars[sexpr.cnt];
+  c_value cvals[sexpr.cnt];
+  var_def * lisp_vars = alloc(sizeof(var_def) * sexpr.cnt);
+  for(size_t i = 0; i < sexpr.cnt; i++){
+    COMPILE_ASSERT(sexpr.exprs[i].type == EXPR);
+    sub_expr var_expr = sexpr.exprs[i].sub_expr;
+    COMPILE_ASSERT(var_expr.cnt == 2 && var_expr.exprs[0].type == VALUE && var_expr.exprs[0].value.type == SYMBOL);
+    value_expr var_name = var_expr.exprs[0].value;
+    c_var var;
+    var.var.name = fmtstr("%.*s",var_name.strln,var_name.value);
+    var.var.type = _compile_expr(block, cvals + i, var_expr.exprs[1]);
+    var.value = vars[i];
+    lisp_vars[i].name = var.var.name;
+    lisp_vars[i].type = var.var.type;
+    lisp_vars[i].data = NULL;
+  }
+  type_def * ret_type;
+  with_symbols(&lisp_vars,&sexpr.cnt,lambda(void,(){
+	ret_type = _compile_expr(block,val,body);
+      }));
+  return ret_type;
 }
 
 type_def * progn_macro(c_block * block, c_value * val, expr expressions){
