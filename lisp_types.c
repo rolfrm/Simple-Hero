@@ -311,14 +311,13 @@ void print_value(c_value val){
 }
 
 void print_c_var(c_var var){
-  //print_def(var.var);
-  //todo: print_cdecl(var.var);
-    if(var.value != NULL){
-      format(" = ");
-      print_value(*var.value);
-    }
-    format(";\n");
-    }
+  print_cdecl(var.var);
+  if(var.value != NULL){
+    format(" = ");
+    print_value(*var.value);
+  }
+  format(";\n");
+}
 
 static void print_expr2(c_expr expr){
   switch(expr.type){
@@ -344,7 +343,8 @@ void print_block(c_block blk){
   size_t var_cnt = 0;
   for(size_t i = 0; i < blk.expr_cnt; i++)
     if(blk.exprs[i].type == C_VAR) var_cnt++;  
-  var_def vars[var_cnt];
+  var_def _vars[var_cnt];
+  var_def * vars = _vars;
   var_cnt = 0;
 
   format("{\n");

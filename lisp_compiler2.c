@@ -74,7 +74,7 @@ type_def * _type_macro(expr typexpr){
       type_def * ret = _type_macro(sexp.exprs[1]);
       COMPILE_ASSERT(&error_def != ret);
       decl args[sexp.cnt - 2];
-      for(int i = 0; i < sexp.cnt - 2; i++){
+      for(size_t i = 0; i < sexp.cnt - 2; i++){
 	COMPILE_ASSERT(read_decl(sexp.exprs[i + 2], args + i));
       } 
       out.fcn.ret = ret;
@@ -183,9 +183,8 @@ static type_def * __compile_expr(c_block * block, c_value * value, sub_expr * se
   type_def * sub_types[se->cnt];
   UNUSED(sub_types);
   c_value val[se->cnt];
-  for(i64 i = 0; i < se->cnt; i++){
+  for(size_t i = 0; i < se->cnt; i++){
     expr * e = se->exprs + i;
-    
     sub_types[i] = _compile_expr(block, val + i, *e);
   }
   return &error_def;
@@ -361,7 +360,7 @@ type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
   COMPILE_ASSERT(vars.type == EXPR);
   sub_expr sexpr = vars.sub_expr;
   c_expr cvars[sexpr.cnt];
-  c_value cvals[sexpr.cnt];
+  c_value * cvals = alloc0(sizeof(c_value) * sexpr.cnt);
   var_def * lisp_vars = alloc(sizeof(var_def) * sexpr.cnt);
   for(size_t i = 0; i < sexpr.cnt; i++){
     COMPILE_ASSERT(sexpr.exprs[i].type == EXPR);
@@ -371,11 +370,17 @@ type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
     c_var var;
     var.var.name = fmtstr("%.*s",var_name.strln,var_name.value);
     var.var.type = _compile_expr(block, cvals + i, var_expr.exprs[1]);
-    var.value = vars[i];
+    var.value = cvals + i;
     lisp_vars[i].name = var.var.name;
     lisp_vars[i].type = var.var.type;
     lisp_vars[i].data = NULL;
+    cvars[i].type = C_VAR;
+    cvars[i].var = var;
   }
+  for(size_t i = 0; i < sexpr.cnt; i++){
+    list_add((void **) &block->exprs, &block->expr_cnt, cvars + i, sizeof(c_expr));
+  }
+  
   type_def * ret_type;
   with_symbols(&lisp_vars,&sexpr.cnt,lambda(void,(){
 	ret_type = _compile_expr(block,val,body);
@@ -383,9 +388,9 @@ type_def * var_macro(c_block * block, c_value * val, expr vars, expr body){
   return ret_type;
 }
 
-type_def * progn_macro(c_block * block, c_value * val, expr expressions){
+//type_def * progn_macro(c_block * block, c_value * val, expr expressions){
   // todo: requires varadic macros.
-}
+//}
 
 type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, expr body){
 
@@ -414,7 +419,7 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
   
   expr subexpr[args.sub_expr.cnt + 1];
   subexpr[0] = symbol_expr("fcn");
-  for(int i = 1; i < args.sub_expr.cnt + 1; i++){
+  for(size_t i = 1; i < args.sub_expr.cnt + 1; i++){
     subexpr[i] = args.sub_expr.exprs[i-1];
   }
   
@@ -461,8 +466,8 @@ i64 i64_add(i64 a, i64 b){
 bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
   test_code = "(type (ptr (ptr (ptr (ptr (ptr (ptr (ptr char))))))))";
-  test_code = "\"hello sailor!\"";
-  test_code = "(defun add2 (i64 (a i64)) (i64_add a a)) (add2 (add2 (add2 5)))";
+  test_code = "(var ((x \"hello sailor!\")) x)";
+  //test_code = "(defun add2 (i64 (a i64)) (var ((b(i64_add a a)) (add2 (add2 (add2 5)))";
   size_t exprcnt;
   expr * exprs = lisp_parse_all(test_code, &exprcnt);
   load_defs();
@@ -472,6 +477,7 @@ bool test_lisp2c(){
 	load_defs();
 	define_macro("type",1,&type_macro);
 	define_macro("defun",3,&defun_macro);
+	define_macro("var",2,&var_macro);
 	{
 	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
 	  type_def * type2 = str2type("(fcn void (a (ptr type_def)))");
