@@ -83,6 +83,7 @@ char * parse_string(char * code, value_expr * string){
 char * parse_number(char * code, value_expr * string){
   int decimal_reached = 0;
   char * it = code;
+  if(!isdigit(*code)) return NULL;
   for(; false == is_endexpr(*it); it++){
     if(*it == '.'){
       if(decimal_reached)
@@ -99,7 +100,6 @@ char * parse_number(char * code, value_expr * string){
 }
 
 char * parse_single_line_comment(char * code, value_expr * val){
-  logd("this happens!\n");
   bool is_comment(char c){
     return c != '\n';
   }
@@ -107,13 +107,15 @@ char * parse_single_line_comment(char * code, value_expr * val){
     return NULL;
   char * r = take_while(code, is_comment);
   val->type = COMMENT;
-  val->value = code;
-  val->strln = (size_t)(code - r);
-  return r;
+  val->value = code + 1;
+  val->strln = (size_t)(r - val->value);
+  return r + 1;
 }
 
 char * parse_value(char * code, value_expr * val){
   char * next;
+  next = parse_single_line_comment(code, val);
+  if(next != NULL) return next;
   next = parse_string(code, val);
   if(next != NULL) return next;
   next = parse_keyword(code, val);
@@ -122,8 +124,7 @@ char * parse_value(char * code, value_expr * val){
   if(next != NULL) return next;
   next = parse_symbol(code, val);
   if(next != NULL) return next;
-  next = parse_single_line_comment(code, val);
-  if(next != NULL) return next;
+  
   return NULL;
 }
 char * parse_expr(char * code, expr * out_expr);
@@ -153,7 +154,6 @@ char * parse_subexpr(char * code, sub_expr * subexpr){
   if(code == NULL)
     return NULL;
   if(exprs[len].type == VALUE && exprs[len].value.type == COMMENT){
-
     // skip comments
   }else{
     len++;
@@ -190,7 +190,7 @@ char * parse_expr(char * code, expr * out_expr){
 void delete_expr(expr * expr){
   if(expr->type == EXPR){
     sub_expr sexpr = expr->sub_expr;
-    for(int i = 0 ; i < sexpr.cnt; i++){
+    for(size_t i = 0 ; i < sexpr.cnt; i++){
       delete_expr(sexpr.exprs + i);
     }
     free(sexpr.exprs);
@@ -217,7 +217,7 @@ void print_expr(expr * expr1){
     switch(expr2->type){
     case EXPR:
       //printf("%-7s: %*s %.*s \n","expr", indent, " ", value.strln, subexpr.name.value);
-      for(int i = 0 ; i < subexpr.cnt; i++){
+      for(size_t i = 0 ; i < subexpr.cnt; i++){
 	iprint(subexpr.exprs + i,indent + 1);
       }
       break;
@@ -231,23 +231,23 @@ void print_expr(expr * expr1){
 
 
 char * lisp_parse(char * code, expr * out_exprs, int * out_exprs_count){
-  for(int i = 0 ; i < *out_exprs_count; i++){
+  size_t expr_cnt = 0;
+  size_t outexprcnt = *out_exprs_count;
+  while(*code != 0 && expr_cnt != outexprcnt){
     code = take_while(code, is_whitespace);
-    if(*code == 0){
-      *out_exprs_count = i;
-      return code;
-    }
-    char * cn = parse_expr(code, out_exprs + i);
-    if(cn == NULL){
-      *out_exprs_count = i;
-      return NULL;
-    }
+    expr out_expr;
+    char * cn = parse_expr(code, &out_expr);
+    if(cn == NULL) goto end;
     code = cn;
-    if(*code == 0) {
-      *out_exprs_count = i + 1;
-      return code;
+    if(out_expr.type == VALUE && out_expr.value.type == COMMENT){
+      // skip comment
+    }else{
+      out_exprs[expr_cnt++] = out_expr;
     }
   }
+
+ end:
+  *out_exprs_count = expr_cnt;
   return code;
 }
 
@@ -274,8 +274,7 @@ expr lisp_parse1(char * code){
   if(out_cnt == 0 || next == NULL){
     ERROR("Unable to parse '%s'", code);
   }
-  return expr;
-  
+  return expr;  
 }
 
 static bool test_infinite_bug(){
@@ -292,12 +291,20 @@ static bool test_infinite_bug(){
   return TEST_SUCCESS;
 }
 
+bool test_empty(){
+  char code[] = ";hello world\n;hello world\n\n;asd\n\n\n";
+  size_t out_cnt = 0;
+  expr * exprs = lisp_parse_all(code, &out_cnt);
+  TEST_ASSERT(out_cnt == 0 && exprs == NULL);
+  return TEST_SUCCESS;
+}
+
 bool test_lisp_parser(){
+  TEST(test_empty);
   expr exprs[10];
   int exprs_count = 10;
 
   lisp_parse("(hej (hej2 1.0312))(add (sub 1 :a 5  \"hello\") 2)\n",exprs,&exprs_count);
-  printf("lisp exprs %i\n", exprs_count);
   TEST_ASSERT(exprs_count == 2);
   for(int i = 0; i < exprs_count; i++)
     delete_expr(exprs + i);

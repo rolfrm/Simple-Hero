@@ -52,9 +52,10 @@ void ld32_main();
 bool test_lisp_parser();
 bool test_lisp2c();
 int main(){
+  TEST(test_lisp_parser);
   compiler_state * c = compiler_make();
   lisp_run_script_file(c,"test.lisp");
-  //TEST(test_lisp_parser);
+  
   //TEST(test_lisp2c);
   //  TEST(lisp_compiler_test);
   return 0;
