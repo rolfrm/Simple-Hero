@@ -16,13 +16,17 @@ char * take_while(char * data, bool (* fcn)(char char_code)){
 bool is_alphanum(char c){
   return isdigit(c) || isalpha(c);
 }
+
+
+
 bool is_whitespace(char c){
   return (bool)isspace(c) || c == '\n';
 }
 
 bool is_endexpr(char c){
-  return c == ')' || is_whitespace(c) || c == 0;
+  return c == ')' || is_whitespace(c) || c == 0 || c ==';';
 }
+
 bool is_keyword_char(char c){
   return !is_endexpr(c);
 }
@@ -94,6 +98,20 @@ char * parse_number(char * code, value_expr * string){
   return it;
 }
 
+char * parse_single_line_comment(char * code, value_expr * val){
+  logd("this happens!\n");
+  bool is_comment(char c){
+    return c != '\n';
+  }
+  if(*code != ';')
+    return NULL;
+  char * r = take_while(code, is_comment);
+  val->type = COMMENT;
+  val->value = code;
+  val->strln = (size_t)(code - r);
+  return r;
+}
+
 char * parse_value(char * code, value_expr * val){
   char * next;
   next = parse_string(code, val);
@@ -103,6 +121,8 @@ char * parse_value(char * code, value_expr * val){
   next = parse_number(code, val);
   if(next != NULL) return next;
   next = parse_symbol(code, val);
+  if(next != NULL) return next;
+  next = parse_single_line_comment(code, val);
   if(next != NULL) return next;
   return NULL;
 }
@@ -132,7 +152,12 @@ char * parse_subexpr(char * code, sub_expr * subexpr){
   code = parse_expr(code, exprs + len);
   if(code == NULL)
     return NULL;
-  len++;
+  if(exprs[len].type == VALUE && exprs[len].value.type == COMMENT){
+
+    // skip comments
+  }else{
+    len++;
+  }
   goto next_part;
  
 }

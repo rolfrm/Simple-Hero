@@ -428,6 +428,8 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
   newfcn_root.type = C_FUNCTION_DEF;
   c_fcndef * f = &newfcn_root.fcndef;
   c_block * blk = &f->block;
+  blk->exprs = NULL;
+  blk->expr_cnt = 0;
   
   // ** get function decleration **
   decl *fdecl = &f->fdecl;
@@ -467,8 +469,7 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
   }
   expr.value = val;
 
-  blk->exprs = NULL;
-  blk->expr_cnt = 0;
+  
   list_add((void **) &blk->exprs, &blk->expr_cnt, &expr, sizeof(c_expr));
   compile_as_c(&newfcn_root,1);
   // ** Just return the function name ** //
