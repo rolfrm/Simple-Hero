@@ -491,7 +491,7 @@ void register_type(type_def * ptr, char * name){
   type_item * newitem = alloc0(sizeof(type_item));
   newitem->ptr = ptr;
   newitem->name = name;
-  logd("Register: '%s' %i\n", name, ptr);
+  //logd("Register: '%s' %i\n", name, ptr);
   HASH_ADD_STR(items, name, newitem);
 }
 

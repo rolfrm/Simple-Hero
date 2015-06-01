@@ -13,10 +13,11 @@
 #include "renderer.h"
 #include <stdarg.h>
 
-
-
 #include "vox.h"
 #include "vox_raster.h"
+#include "lisp_parser.h"
+#include "lisp_types.h"
+#include "lisp_compiler.h"
 const char * allowed_errors[] ={
   "Unknown touch device",
   "Invalid renderer"
@@ -51,8 +52,10 @@ void ld32_main();
 bool test_lisp_parser();
 bool test_lisp2c();
 int main(){
-  TEST(test_lisp_parser);
-  TEST(test_lisp2c);
+  compiler_state * c = compiler_make();
+  lisp_run_script_file(c,"test.lisp");
+  //TEST(test_lisp_parser);
+  //TEST(test_lisp2c);
   //  TEST(lisp_compiler_test);
   return 0;
   //TEST(test_circle);

@@ -478,6 +478,61 @@ type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, e
 i64 i64_add(i64 a, i64 b){
   return a + b;
 }
+
+void lisp_run_script_file(compiler_state * c, char * filepath){
+  char * test_code = read_file_to_string(filepath);
+  size_t exprcnt;
+  expr * exprs = lisp_parse_all(test_code, &exprcnt);
+  load_defs();
+  with_compiler(c,lambda(void, (){
+	load_defs();
+	define_macro("type",1,&type_macro);
+	define_macro("defun",3,&defun_macro);
+	define_macro("var",2,&var_macro);
+	define_macro("progn", -1,&progn_macro);
+	{
+	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
+	  type_def * type2 = str2type("(fcn void (a (ptr type_def)))");
+	  type_def * type3 = str2type("(fcn void (a (ptr void)))");
+	  compiler_define_variable_ptr("print_type", type, print_type);
+	  ASSERT(type == type2 && type != type3);
+	  compiler_define_variable_ptr("write_line", str2type("(fcn void (a (ptr char)))"), &write_line);
+	  compiler_define_variable_ptr("i64_add", str2type("(fcn i64 (a i64) (b i64))"), &i64_add);
+	  ASSERT(NULL != get_variable2("i64_add"));
+	}
+	for(size_t i = 0; i < exprcnt; i++){
+	  c_root_code cl = compile_lisp_to_eval(exprs[i]);
+	  compile_as_c(&cl,1);
+	  var_def * evaldef = get_variable2("eval");
+	  print_def(evaldef->type,false); logd(" :: ");
+	  if(evaldef->type->fcn.ret == &void_def){
+	    logd("()\n");
+	    void (* fcn)() = evaldef->data;
+	    fcn();
+	  }else if(evaldef->type->fcn.ret == str2type("(ptr type_def)")){
+	    type_def * (* fcn)() = evaldef->data;
+	    fcn();
+	    logd("type\n");
+	  }else if(evaldef->type->fcn.ret == &char_ptr_def){
+	    char * (* fcn)() = evaldef->data;
+	    char * str = fcn();
+	    logd("\"%s\"\n",str);
+	      
+	  }else if(evaldef->type->fcn.ret->kind == POINTER){
+	    void * (* fcn)() = evaldef->data;
+	    void * ptr = fcn();
+	    logd("ptr: %x\n", ptr);
+	  }else if(evaldef->type->fcn.ret == &i64_def){
+	    i64 (* fcn)() = evaldef->data;
+	    i64 v = fcn();
+	    logd("%i\n",v);
+	  }else{
+	    logd("\n");
+	    loge("Unable to eval function of this type\n");
+	  }
+	}
+      };));
+}
 	  
 bool test_lisp2c(){
   char * test_code = "(defun printhello ()(print_string \"hello\\n\"))";
