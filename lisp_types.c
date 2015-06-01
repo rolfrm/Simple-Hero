@@ -307,6 +307,7 @@ void print_value(c_value val){
     print_def(val.cast.type, true);
     format(")");
     print_value(*val.cast.value);
+    format(")");
   }
 }
 

@@ -408,6 +408,17 @@ type_def * progn_macro(c_block * block, c_value * val, expr * expressions, size_
   return &void_def;
 }
 
+type_def * cast_macro(c_block * block, c_value * value, expr body, expr type){
+  UNUSED(block);
+  c_value * v = alloc0(sizeof(c_value));
+  _compile_expr(block,v, body);
+  type_def * cast_to = _type_macro(type);
+  value->type = C_CAST;
+  value->cast.value = v;
+  value->cast.type = cast_to;
+  return cast_to;
+}
+
 type_def * defun_macro(c_block * block, c_value * value, expr name, expr args, expr body){
 
   // This function is rather complicated.
@@ -491,6 +502,7 @@ void lisp_run_script_file(compiler_state * c, char * filepath){
 	define_macro("defun",3,&defun_macro);
 	define_macro("var",2,&var_macro);
 	define_macro("progn", -1,&progn_macro);
+	define_macro("cast", 2, &cast_macro);
 	{
 	  type_def * type = str2type("(fcn void (a (ptr type_def)))");
 	  type_def * type2 = str2type("(fcn void (a (ptr type_def)))");
@@ -597,5 +609,5 @@ bool test_lisp2c(){
 	}
 
       };));
-  return TEST_FAIL;
+  return TEST_SUCCESS;
 }

@@ -51,13 +51,25 @@ void circle_sg_main();
 void ld32_main();
 bool test_lisp_parser();
 bool test_lisp2c();
-int main(){
-  TEST(test_lisp_parser);
-  compiler_state * c = compiler_make();
-  lisp_run_script_file(c,"test.lisp");
+int main(int argc, char *argv[] ){
+  if(argc == 2 && strcmp(argv[1],"--repl") == 0){
+    ERROR("not implemented");
+    return 0;
+  }
   
-  //TEST(test_lisp2c);
-  //  TEST(lisp_compiler_test);
+  if(argc == 2 && strcmp(argv[1],"--test") == 0){
+    log("Running tests...\n");
+    TEST(test_lisp_parser);
+    TEST(test_lisp2c);
+    return 0;
+  }
+
+  if(argc == 2){
+    compiler_state * c = compiler_make();
+    lisp_run_script_file(c,argv[1]);
+    return 0;
+  }
+
   return 0;
   //TEST(test_circle);
   TEST(test_utils);
